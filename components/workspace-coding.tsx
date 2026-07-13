@@ -58,7 +58,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
       });
 
       if (!response.ok) {
-        throw new Error('Compiler service returned an error.');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Compiler service returned an error.');
       }
 
       const data = await response.json();
@@ -95,7 +96,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
       });
 
       if (!response.ok) {
-        throw new Error('Failed to record submission.');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to record submission.');
       }
 
       const data = await response.json();

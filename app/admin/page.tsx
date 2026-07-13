@@ -6,14 +6,14 @@ import { supabase, getCurrentSession } from '@/lib/supabase';
 import { 
   Users, ClipboardList, TrendingUp, AlertTriangle, Download, 
   Search, Filter, Edit, CheckCircle, Clock, XCircle, RefreshCw, 
-  Send, Plus, Trash, BookOpen, Key, Check, PlusCircle, LayoutGrid
+  Send, Plus, Trash, BookOpen, Key, Check, PlusCircle, LayoutGrid, BarChart2
 } from 'lucide-react';
 
 export default function TeacherAdminDashboard() {
   const router = useRouter();
 
   // Navigation state
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'tasks'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'tasks' | 'monitor'>('overview');
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -29,6 +29,13 @@ export default function TeacherAdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
 
+  // Progress Monitoring tab states
+  const [selectedMonitorTaskId, setSelectedMonitorTaskId] = useState<string>('');
+  const [monitorCompleted, setMonitorCompleted] = useState<any[]>([]);
+  const [monitorPending, setMonitorPending] = useState<any[]>([]);
+  const [monitorUncompleted, setMonitorUncompleted] = useState<any[]>([]);
+  const [monitorStats, setMonitorStats] = useState({ total: 0, completed: 0, uncompleted: 0, rate: 0 });
+
   // Manual review modal states
   const [selectedSub, setSelectedSub] = useState<any>(null);
   const [reviewScore, setReviewScore] = useState(0);
@@ -41,7 +48,6 @@ export default function TeacherAdminDashboard() {
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [studentName, setStudentName] = useState('');
   const [studentRoll, setStudentRoll] = useState('');
-  const [studentEmail, setStudentEmail] = useState('');
   const [studentPassword, setStudentPassword] = useState('student123'); // Default temp pass
   const [savingStudent, setSavingStudent] = useState(false);
 
@@ -55,6 +61,10 @@ export default function TeacherAdminDashboard() {
   const [taskStarter, setTaskStarter] = useState('');
   const [taskExpected, setTaskExpected] = useState('');
   const [taskCloudUrl, setTaskCloudUrl] = useState('');
+  
+  // Timings
+  const [taskStartTime, setTaskStartTime] = useState('');
+  const [taskEndTime, setTaskEndTime] = useState('');
   
   // Quiz dynamic building states
   const [quizQuestions, setQuizQuestions] = useState<any[]>([
@@ -71,6 +81,15 @@ export default function TeacherAdminDashboard() {
   });
 
   const [unitBottlenecks, setUnitBottlenecks] = useState<any[]>([]);
+
+  // Helper to format ISO to datetime-local value (YYYY-MM-DDTHH:MM)
+  const formatIsoToDatetimeLocal = (isoString: string) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const tzoffset = date.getTimezoneOffset() * 60000; //offset in milliseconds
+    const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
+    return localISOTime;
+  };
 
   const fetchAdminData = async () => {
     try {
@@ -93,6 +112,11 @@ export default function TeacherAdminDashboard() {
         .order('unit_number', { ascending: true });
       if (tasksError) throw tasksError;
       setTasks(dbTasks || []);
+
+      // Set initial monitor task if not set and tasks exist
+      if (dbTasks && dbTasks.length > 0 && !selectedMonitorTaskId) {
+        setSelectedMonitorTaskId(dbTasks[0].id);
+      }
 
       // 3. Fetch submissions
       const { data: dbSubmissions, error: subsError } = await supabase
@@ -171,19 +195,84 @@ export default function TeacherAdminDashboard() {
     fetchAdminData();
   }, [router]);
 
+  // Compute live progress split for the selected task in the monitor tab
+  useEffect(() => {
+    if (!selectedMonitorTaskId || students.length === 0) return;
+
+    // Filter submissions for this specific task
+    const taskSubs = submissions.filter(s => s.task_id === selectedMonitorTaskId);
+
+    // Group submissions by student (keep highest score or passed status)
+    const bestStudentSubs: { [key: string]: any } = {};
+    taskSubs.forEach(sub => {
+      const studentId = sub.student_id;
+      if (!bestStudentSubs[studentId] || sub.status === 'passed') {
+        bestStudentSubs[studentId] = sub;
+      }
+    });
+
+    const completed: any[] = [];
+    const pending: any[] = [];
+    const uncompleted: any[] = [];
+
+    students.forEach(student => {
+      const sub = bestStudentSubs[student.id];
+      if (sub) {
+        if (sub.status === 'passed') {
+          completed.push({
+            student,
+            score: sub.score,
+            submittedAt: sub.submitted_at
+          });
+        } else if (sub.status === 'pending') {
+          pending.push({
+            student,
+            score: sub.score,
+            submittedAt: sub.submitted_at
+          });
+        } else {
+          uncompleted.push({
+            student,
+            status: 'failed',
+            score: sub.score
+          });
+        }
+      } else {
+        uncompleted.push({
+          student,
+          status: 'unattempted',
+          score: 0
+        });
+      }
+    });
+
+    const totalCount = students.length;
+    const completedCount = completed.length;
+    const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    setMonitorCompleted(completed);
+    setMonitorPending(pending);
+    setMonitorUncompleted(uncompleted);
+    setMonitorStats({
+      total: totalCount,
+      completed: completedCount,
+      uncompleted: totalCount - completedCount,
+      rate: completionRate
+    });
+
+  }, [selectedMonitorTaskId, students, submissions]);
+
   // STUDENT CRUD HANDLERS
   const handleOpenStudentModal = (student: any = null) => {
     if (student) {
       setEditingStudent(student);
       setStudentName(student.full_name);
       setStudentRoll(student.roll_number || '');
-      setStudentEmail(student.email);
       setStudentPassword(student.password);
     } else {
       setEditingStudent(null);
       setStudentName('');
       setStudentRoll('');
-      setStudentEmail('');
       setStudentPassword('student123');
     }
     setShowStudentModal(true);
@@ -194,28 +283,31 @@ export default function TeacherAdminDashboard() {
     setSavingStudent(true);
 
     try {
+      // Auto-generate student email from roll number to bypass unique not null constraint in schema
+      const generatedEmail = `${studentRoll.trim().toLowerCase()}@portal.com`;
+
       if (editingStudent) {
         // Edit student in Profiles
         const { error } = await supabase
           .from('profiles')
           .update({
             full_name: studentName,
-            roll_number: studentRoll,
-            email: studentEmail,
+            roll_number: studentRoll.trim(),
+            email: generatedEmail,
             password: studentPassword
           })
           .eq('id', editingStudent.id);
 
         if (error) throw error;
       } else {
-        // Add new student (defaults to student role, first_login is true so they must reset password)
+        // Add new student (first_login defaults to true)
         const { error } = await supabase
           .from('profiles')
           .insert({
-            email: studentEmail.trim(),
+            email: generatedEmail,
             password: studentPassword,
             full_name: studentName,
-            roll_number: studentRoll,
+            roll_number: studentRoll.trim(),
             role: 'student',
             first_login: true
           });
@@ -226,7 +318,7 @@ export default function TeacherAdminDashboard() {
       setShowStudentModal(false);
       fetchAdminData();
     } catch (err: any) {
-      alert(`Error saving student details: ${err.message}`);
+      alert(`Error saving student: ${err.message}`);
     } finally {
       setSavingStudent(false);
     }
@@ -250,6 +342,9 @@ export default function TeacherAdminDashboard() {
 
   // TASKS CRUD HANDLERS
   const handleOpenTaskModal = (task: any = null) => {
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
     if (task) {
       setEditingTask(task);
       setTaskTitle(task.title);
@@ -259,6 +354,8 @@ export default function TeacherAdminDashboard() {
       setTaskStarter(task.starter_code || '');
       setTaskExpected(task.expected_output || '');
       setTaskCloudUrl(task.cloud_ide_url || '');
+      setTaskStartTime(formatIsoToDatetimeLocal(task.start_time || now.toISOString()));
+      setTaskEndTime(formatIsoToDatetimeLocal(task.end_time || tomorrow.toISOString()));
       
       const metadata = task.metadata || {};
       setQuizQuestions(metadata.questions || [
@@ -273,6 +370,8 @@ export default function TeacherAdminDashboard() {
       setTaskStarter('');
       setTaskExpected('');
       setTaskCloudUrl('');
+      setTaskStartTime(formatIsoToDatetimeLocal(now.toISOString()));
+      setTaskEndTime(formatIsoToDatetimeLocal(tomorrow.toISOString()));
       setQuizQuestions([
         { id: 'q1', question: '', options: ['', '', '', ''], correctOption: 0 }
       ]);
@@ -280,7 +379,6 @@ export default function TeacherAdminDashboard() {
     setShowTaskModal(true);
   };
 
-  // Dynamic Quiz construction helpers
   const handleQuizQuestionChange = (index: number, field: string, val: any) => {
     setQuizQuestions(prev => {
       const copy = [...prev];
@@ -319,7 +417,9 @@ export default function TeacherAdminDashboard() {
         title: taskTitle,
         description: taskDesc,
         unit_number: taskUnit,
-        type: taskType
+        type: taskType,
+        start_time: new Date(taskStartTime).toISOString(),
+        end_time: new Date(taskEndTime).toISOString()
       };
 
       if (taskType === 'quiz') {
@@ -413,7 +513,7 @@ export default function TeacherAdminDashboard() {
     }
   };
 
-  // EXPORT CSV
+  // EXPORT OVERALL CSV
   const handleExportCSV = () => {
     if (students.length === 0) return;
 
@@ -437,6 +537,38 @@ export default function TeacherAdminDashboard() {
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
     link.setAttribute('download', 'advanced_java_grades.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // EXPORT SPECIFIC TASK CSV
+  const handleExportTaskCSV = () => {
+    const selectedTask = tasks.find(t => t.id === selectedMonitorTaskId);
+    if (!selectedTask) return;
+
+    let csvContent = `data:text/csv;charset=utf-8,Task Title: ${selectedTask.title}\n`;
+    csvContent += 'Roll Number,Student Name,Status,Score,Submission Date\n';
+
+    // Add completed
+    monitorCompleted.forEach(c => {
+      csvContent += `"${c.student.roll_number || 'N/A'}","${c.student.full_name}","Completed",${c.score},"${new Date(c.submittedAt).toLocaleDateString()}"\n`;
+    });
+
+    // Add pending
+    monitorPending.forEach(p => {
+      csvContent += `"${p.student.roll_number || 'N/A'}","${p.student.full_name}","Pending Review",${p.score},"${new Date(p.submittedAt).toLocaleDateString()}"\n`;
+    });
+
+    // Add uncompleted
+    monitorUncompleted.forEach(u => {
+      csvContent += `"${u.student.roll_number || 'N/A'}","${u.student.full_name}","${u.status === 'failed' ? 'Failed' : 'Unattempted'}",${u.score},N/A\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `task_report_${selectedTask.title.replace(/\s+/g, '_').toLowerCase()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -508,6 +640,14 @@ export default function TeacherAdminDashboard() {
           }`}
         >
           <div className="flex items-center gap-1.5"><LayoutGrid className="h-4 w-4" /> Overview & Feed</div>
+        </button>
+        <button
+          onClick={() => setActiveTab('monitor')}
+          className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'monitor' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-1.5"><BarChart2 className="h-4 w-4" /> Progress Monitor</div>
         </button>
         <button
           onClick={() => setActiveTab('students')}
@@ -704,6 +844,152 @@ export default function TeacherAdminDashboard() {
         </>
       )}
 
+      {/* NEW PROGRESS MONITORING TAB */}
+      {activeTab === 'monitor' && (
+        <div className="glass-card p-6 border border-slate-800 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-white">Task Completion Progress Tracker</h3>
+              <p className="text-xs text-slate-400 font-light mt-0.5">Select a curriculum task below to track active student submissions and downloads.</p>
+            </div>
+            
+            {selectedMonitorTaskId && (
+              <button
+                onClick={handleExportTaskCSV}
+                className="flex items-center gap-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 text-xs font-semibold cursor-pointer transition-all shadow"
+              >
+                <Download className="h-4 w-4" /> Download Task CSV Report
+              </button>
+            )}
+          </div>
+
+          {/* Task selector dropdown */}
+          <div className="w-full sm:w-1/2 space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected Practice Exercise</label>
+            <select
+              value={selectedMonitorTaskId}
+              onChange={(e) => setSelectedMonitorTaskId(e.target.value)}
+              className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+            >
+              {tasks.length > 0 ? (
+                tasks.map(t => (
+                  <option key={t.id} value={t.id}>
+                    Unit {t.unit_number} - {t.title} ({t.type})
+                  </option>
+                ))
+              ) : (
+                <option value="">No tasks available</option>
+              )}
+            </select>
+          </div>
+
+          {/* Task Metrics row */}
+          {selectedMonitorTaskId && (
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Total Students</span>
+                <span className="text-xl font-extrabold text-white">{monitorStats.total}</span>
+              </div>
+              <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg">
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider block">Completed (Passed)</span>
+                <span className="text-xl font-extrabold text-emerald-400">{monitorStats.completed}</span>
+              </div>
+              <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg">
+                <span className="text-[9px] font-bold text-rose-400 uppercase tracking-wider block">Not Completed</span>
+                <span className="text-xl font-extrabold text-rose-400">{monitorStats.uncompleted}</span>
+              </div>
+              <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg">
+                <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider block">Completion Rate</span>
+                <span className="text-xl font-extrabold text-indigo-400">{monitorStats.rate}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Split lists: Completed vs Not Completed */}
+          {selectedMonitorTaskId && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              
+              {/* Roster A: Completed */}
+              <div className="border border-slate-800 rounded-lg overflow-hidden">
+                <div className="bg-slate-900/60 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle className="h-4 w-4" /> Completed Roster ({monitorCompleted.length})
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-900 max-h-[350px] overflow-y-auto bg-slate-950/20 text-xs">
+                  {monitorCompleted.length > 0 ? (
+                    monitorCompleted.map(c => (
+                      <div key={c.student.id} className="p-4 flex items-center justify-between hover:bg-slate-900/10">
+                        <div className="space-y-0.5">
+                          <p className="font-semibold text-white">{c.student.full_name}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">Roll: {c.student.roll_number}</p>
+                        </div>
+                        <div className="text-right space-y-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
+                            Score: {c.score}%
+                          </span>
+                          <p className="text-[9px] text-slate-500">Passed: {new Date(c.submittedAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-slate-500 italic">No students have completed this task yet.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Roster B: Not Completed */}
+              <div className="border border-slate-800 rounded-lg overflow-hidden">
+                <div className="bg-slate-900/60 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
+                  <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                    <XCircle className="h-4 w-4" /> Not Completed Roster ({monitorUncompleted.length + monitorPending.length})
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-900 max-h-[350px] overflow-y-auto bg-slate-950/20 text-xs">
+                  {/* First display pending review users */}
+                  {monitorPending.map(p => (
+                    <div key={p.student.id} className="p-4 flex items-center justify-between hover:bg-slate-900/10 bg-amber-500/5">
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-white">{p.student.full_name}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">Roll: {p.student.roll_number}</p>
+                      </div>
+                      <div className="text-right space-y-0.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-400 border border-amber-500/20">
+                          Awaiting Review
+                        </span>
+                        <p className="text-[9px] text-slate-500">Submitted: {new Date(p.submittedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Then display failed or unattempted users */}
+                  {monitorUncompleted.length > 0 || monitorPending.length > 0 ? (
+                    monitorUncompleted.map(u => (
+                      <div key={u.student.id} className="p-4 flex items-center justify-between hover:bg-slate-900/10">
+                        <div className="space-y-0.5">
+                          <p className="font-semibold text-white">{u.student.full_name}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">Roll: {u.student.roll_number}</p>
+                        </div>
+                        <span className={`inline-flex items-center gap-1 rounded px-2.5 py-0.5 text-[10px] font-medium border ${
+                          u.status === 'failed' 
+                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                            : 'bg-slate-800 text-slate-500 border-transparent'
+                        }`}>
+                          {u.status === 'failed' ? 'Failed Attempt' : 'Unattempted'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-slate-500 italic">All active students cleared this exercise!</div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'students' && (
         <div className="glass-card p-6 border border-slate-800 space-y-6">
           <div className="flex justify-between items-center">
@@ -725,7 +1011,6 @@ export default function TeacherAdminDashboard() {
                 <tr>
                   <th className="px-4 py-3">Roll Number</th>
                   <th className="px-4 py-3">Full Name</th>
-                  <th className="px-4 py-3">Email Address</th>
                   <th className="px-4 py-3">Active Password</th>
                   <th className="px-4 py-3">First Login Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -737,7 +1022,6 @@ export default function TeacherAdminDashboard() {
                     <tr key={s.id} className="hover:bg-slate-900/10">
                       <td className="px-4 py-3 font-mono font-semibold text-slate-200">{s.roll_number}</td>
                       <td className="px-4 py-3 font-semibold text-white">{s.full_name}</td>
-                      <td className="px-4 py-3">{s.email}</td>
                       <td className="px-4 py-3 font-mono text-indigo-400">{s.password}</td>
                       <td className="px-4 py-3">
                         {s.first_login ? (
@@ -749,7 +1033,7 @@ export default function TeacherAdminDashboard() {
                       <td className="px-4 py-3 text-right space-x-2">
                         <button
                           onClick={() => handleOpenStudentModal(s)}
-                          className="px-2.5 py-1 text-[10.5px] rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 cursor-pointer"
+                          className="px-2.5 py-1 text-[10.5px] rounded bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-850 cursor-pointer"
                         >
                           Edit
                         </button>
@@ -764,7 +1048,7 @@ export default function TeacherAdminDashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500 italic">No student accounts registered. Click Add Student above to begin.</td>
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500 italic">No student accounts registered. Click Add Student above to begin.</td>
                   </tr>
                 )}
               </tbody>
@@ -794,7 +1078,8 @@ export default function TeacherAdminDashboard() {
                 <tr>
                   <th className="px-4 py-3">Unit</th>
                   <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Classification Type</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Scheduled Timings (Start - End)</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -805,6 +1090,16 @@ export default function TeacherAdminDashboard() {
                       <td className="px-4 py-3 font-semibold text-slate-200">Unit {t.unit_number}</td>
                       <td className="px-4 py-3 font-semibold text-white">{t.title}</td>
                       <td className="px-4 py-3 capitalize">{t.type.replace('_', ' ')}</td>
+                      <td className="px-4 py-3 text-slate-400 font-light text-[11px] leading-relaxed">
+                        {t.start_time ? (
+                          <>
+                            <div>Start: {new Date(t.start_time).toLocaleString()}</div>
+                            <div>End: {new Date(t.end_time).toLocaleString()}</div>
+                          </>
+                        ) : (
+                          'No timer configured'
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right space-x-2">
                         <button
                           onClick={() => handleOpenTaskModal(t)}
@@ -823,7 +1118,7 @@ export default function TeacherAdminDashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-slate-500 italic">No exercises created yet. Click Add Task above.</td>
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500 italic">No exercises created yet. Click Add Task above.</td>
                   </tr>
                 )}
               </tbody>
@@ -854,26 +1149,14 @@ export default function TeacherAdminDashboard() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Roll Number</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Roll Number (Login Username)</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. CS2026101"
                   value={studentRoll}
                   onChange={(e) => setStudentRoll(e.target.value)}
-                  className="w-full glass-input text-xs"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. rachel@university.edu"
-                  value={studentEmail}
-                  onChange={(e) => setStudentEmail(e.target.value)}
-                  className="w-full glass-input text-xs"
+                  className="w-full glass-input text-xs font-mono text-indigo-400"
                 />
               </div>
 
@@ -887,7 +1170,7 @@ export default function TeacherAdminDashboard() {
                   className="w-full glass-input text-xs font-mono text-indigo-400"
                 />
                 {!editingStudent && (
-                  <span className="text-[9px] text-slate-500 leading-none">Default temp password. Enforces password change on login.</span>
+                  <span className="text-[9px] text-slate-500 leading-none block">Default temp password. Enforces password change on login.</span>
                 )}
               </div>
             </div>
@@ -974,6 +1257,31 @@ export default function TeacherAdminDashboard() {
                   onChange={(e) => setTaskDesc(e.target.value)}
                   className="w-full glass-input text-xs resize-none"
                 />
+              </div>
+
+              {/* TIMING CONFIGURATION FIELDS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-b border-slate-900 py-3.5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Scheduled Start Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={taskStartTime}
+                    onChange={(e) => setTaskStartTime(e.target.value)}
+                    className="w-full glass-input text-xs bg-slate-950 text-slate-300"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Scheduled End Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={taskEndTime}
+                    onChange={(e) => setTaskEndTime(e.target.value)}
+                    className="w-full glass-input text-xs bg-slate-950 text-slate-300"
+                  />
+                </div>
               </div>
 
               {/* RENDER FORMS BASED ON TASK TYPE */}
@@ -1200,7 +1508,7 @@ export default function TeacherAdminDashboard() {
               <button
                 type="button"
                 onClick={() => setSelectedSub(null)}
-                className="rounded border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 px-4 py-2 text-xs font-semibold cursor-pointer"
+                className="rounded border border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-300 px-4 py-2 text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>

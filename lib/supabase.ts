@@ -5,23 +5,46 @@ export const supabase = createClient();
 // Custom Table-Based Authentication Helpers (Bypassing Supabase Auth)
 const SESSION_KEY = 'java_hybrid_portal_session';
 
-export async function loginUser(email: string, password: string) {
+export async function loginStudent(rollNumber: string, password: string) {
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('email', email.trim())
+    .eq('roll_number', rollNumber.trim())
+    .eq('role', 'student')
     .single();
 
   if (error || !profile) {
-    throw new Error('No user account found with that email address.');
+    throw new Error('No student account found with that Roll Number.');
   }
 
-  // Simple password check (plaintext comparison as requested)
+  // Plaintext password comparison as requested
   if (profile.password !== password) {
     throw new Error('Incorrect password. Please try again.');
   }
 
-  // Save user profile to local storage for session tracking
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
+  }
+
+  return profile;
+}
+
+export async function loginFaculty(email: string, password: string) {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('email', email.trim())
+    .eq('role', 'faculty')
+    .single();
+
+  if (error || !profile) {
+    throw new Error('No faculty account found with that email address.');
+  }
+
+  if (profile.password !== password) {
+    throw new Error('Incorrect password. Please try again.');
+  }
+
   if (typeof window !== 'undefined') {
     localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
   }

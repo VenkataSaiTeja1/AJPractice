@@ -2,14 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginUser, getCurrentSession } from '@/lib/supabase';
-import { GraduationCap, Mail, Lock, ArrowRight } from 'lucide-react';
+import { loginStudent, loginFaculty, getCurrentSession } from '@/lib/supabase';
+import { GraduationCap, Mail, Lock, Hash, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   
+  // Tab states
+  const [loginMode, setLoginMode] = useState<'student' | 'faculty'>('student');
+  
   // Form states
   const [email, setEmail] = useState('');
+  const [rollNumber, setRollNumber] = useState('');
   const [password, setPassword] = useState('');
   
   // Status states
@@ -34,13 +38,12 @@ export default function LoginPage() {
     setErrorMessage('');
 
     try {
-      const profile = await loginUser(email, password);
-      
-      // Redirect based on user role
-      if (profile.role === 'faculty') {
-        router.push('/admin');
-      } else {
+      if (loginMode === 'student') {
+        const profile = await loginStudent(rollNumber, password);
         router.push('/dashboard');
+      } else {
+        const profile = await loginFaculty(email, password);
+        router.push('/admin');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
@@ -59,7 +62,7 @@ export default function LoginPage() {
 
         <div className="relative">
           {/* Header */}
-          <div className="flex flex-col items-center justify-center text-center mb-8">
+          <div className="flex flex-col items-center justify-center text-center mb-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 mb-3 shadow-lg">
               <GraduationCap className="h-7 w-7" />
             </div>
@@ -67,8 +70,42 @@ export default function LoginPage() {
               Java Practice Portal
             </h1>
             <p className="text-sm text-slate-400 mt-1.5">
-              Sign in using your faculty or student credentials
+              Access scheduled curriculum exercises
             </p>
+          </div>
+
+          {/* Mode Switcher */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-lg border border-slate-900 mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('student');
+                setErrorMessage('');
+                setPassword('');
+              }}
+              className={`py-2 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                loginMode === 'student'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Student Portal
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('faculty');
+                setErrorMessage('');
+                setPassword('');
+              }}
+              className={`py-2 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                loginMode === 'faculty'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Faculty Portal
+            </button>
           </div>
 
           {/* Messages */}
@@ -81,21 +118,39 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* Email */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. faculty@portal.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full glass-input pl-10"
-                />
+            {loginMode === 'student' ? (
+              /* Student: Roll Number input */
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Roll Number</label>
+                <div className="relative">
+                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. CS2026101"
+                    value={rollNumber}
+                    onChange={(e) => setRollNumber(e.target.value)}
+                    className="w-full glass-input pl-10"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Faculty: Email input */
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Faculty Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. professor@university.edu"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full glass-input pl-10"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Password */}
             <div className="space-y-1.5">
@@ -127,8 +182,9 @@ export default function LoginPage() {
           {/* Notice */}
           <div className="text-center mt-6 border-t border-slate-900 pt-4">
             <p className="text-[10px] text-slate-500 leading-normal">
-              Student credentials are created and managed by the faculty. 
-              Contact your faculty representative if you do not have account credentials.
+              {loginMode === 'student' 
+                ? 'Your account must be created by your faculty representative. Use the roll number assigned to you.'
+                : 'Use your registered faculty administrator email and password.'}
             </p>
           </div>
 

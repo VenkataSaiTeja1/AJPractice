@@ -70,7 +70,8 @@ export async function POST(req: Request) {
         });
 
         if (!pistonResponse.ok) {
-          throw new Error('Piston execution failed');
+          const runJavaErr = await pistonResponse.json().catch(() => ({}));
+          throw new Error(runJavaErr.error || 'Piston execution failed');
         }
 
         const runResult = await pistonResponse.json();
