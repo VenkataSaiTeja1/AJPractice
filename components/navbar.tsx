@@ -3,57 +3,29 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { getCurrentSession, logoutUser } from '@/lib/supabase';
 import { LogOut, BookOpen, User, ShieldAlert, GraduationCap } from 'lucide-react';
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: prof, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+    // Read session on mount
+    setProfile(getCurrentSession());
 
-        if (!error && prof) {
-          setProfile(prof);
-        }
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    }
+    // Sync state periodically (every 1.5 seconds) in case of updates (e.g. password resets/first logins)
+    const interval = setInterval(() => {
+      setProfile(getCurrentSession());
+    }, 1500);
 
-    fetchSession();
+    return () => clearInterval(interval);
+  }, [pathname]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(prof);
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    logoutUser();
+    setProfile(null);
     router.push('/login');
   };
 
@@ -90,7 +62,7 @@ export default function Navbar() {
                   Dashboard
                 </Link>
 
-                {profile.role === 'teacher' && (
+                {profile.role === 'faculty' && (
                   <Link
                     href="/admin"
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
@@ -100,7 +72,7 @@ export default function Navbar() {
                     }`}
                   >
                     <ShieldAlert className="h-4 w-4" />
-                    Admin Panel
+                    Faculty Control Panel
                   </Link>
                 )}
 
@@ -109,7 +81,7 @@ export default function Navbar() {
                   <div className="flex flex-col text-right hidden md:flex">
                     <span className="text-sm font-medium text-white">{profile.full_name}</span>
                     <span className="text-xs text-slate-400">
-                      {profile.role === 'teacher' ? 'Teacher' : `Roll: ${profile.roll_number || 'N/A'}`}
+                      {profile.role === 'faculty' ? 'Faculty' : `Roll: ${profile.roll_number || 'N/A'}`}
                     </span>
                   </div>
                   <button
@@ -122,7 +94,7 @@ export default function Navbar() {
                 </div>
               </>
             )}
-            {!profile && !loading && (
+            {!profile && (
               <Link
                 href="/login"
                 className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-all"

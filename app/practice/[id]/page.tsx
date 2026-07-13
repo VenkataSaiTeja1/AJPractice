@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, getCurrentSession } from '@/lib/supabase';
 import WorkspaceQuiz from '@/components/workspace-quiz';
 import WorkspaceCoding from '@/components/workspace-coding';
 import WorkspaceCloudLab from '@/components/workspace-cloudlab';
@@ -69,30 +69,15 @@ export default function PracticePage({ params }: PageProps) {
   useEffect(() => {
     if (!taskId) return;
 
-    async function checkAuth() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (!prof) {
-        await supabase.auth.signOut();
-        router.push('/login');
-        return;
-      }
-
-      setProfile(prof);
-      fetchTaskAndSubmissions(session.user.id, taskId as string);
+    // Check custom table-based session
+    const session = getCurrentSession();
+    if (!session) {
+      router.push('/login');
+      return;
     }
 
-    checkAuth();
+    setProfile(session);
+    fetchTaskAndSubmissions(session.id, taskId);
   }, [taskId, router]);
 
   const onTaskSubmitted = () => {

@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, getCurrentSession, updateLocalSession } from '@/lib/supabase';
 import { 
   Award, CheckCircle, Clock, XCircle, Code, HelpCircle, Server, 
-  BookOpen, ChevronRight, BarChart3, Star, RefreshCw 
+  BookOpen, ChevronRight, BarChart3, Star, RefreshCw, Key, ShieldAlert 
 } from 'lucide-react';
 
 const SEED_TASKS = [
@@ -143,6 +143,12 @@ export default function StudentDashboard() {
   // Auth state
   const [profile, setProfile] = useState<any>(null);
   
+  // First login password reset states
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passError, setPassError] = useState('');
+
   // App data states
   const [tasks, setTasks] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -157,7 +163,7 @@ export default function StudentDashboard() {
     rate: 0
   });
 
-  const fetchData = async (user: any) => {
+  const fetchData = async (userProfile: any) => {
     try {
       setLoading(true);
 
@@ -193,7 +199,7 @@ export default function StudentDashboard() {
       const { data: dbSubmissions, error: subError } = await supabase
         .from('submissions')
         .select('*')
-        .eq('student_id', user.id);
+        .eq('student_id', userProfile.id);
 
       if (subError) throw subError;
       setSubmissions(dbSubmissions || []);
@@ -225,32 +231,59 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    async function checkAuth() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-
-      const { data: prof, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error || !prof) {
-        // Account exists but profile is missing
-        await supabase.auth.signOut();
-        router.push('/login');
-        return;
-      }
-
-      setProfile(prof);
-      fetchData(session.user);
+    const session = getCurrentSession();
+    if (!session) {
+      router.push('/login');
+      return;
     }
 
-    checkAuth();
+    if (session.role === 'faculty') {
+      router.push('/admin');
+      return;
+    }
+
+    setProfile(session);
+    fetchData(session);
   }, [router]);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError('');
+
+    if (newPassword.length < 5) {
+      setPassError('Password must be at least 5 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPassError('Passwords do not match.');
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      // Update database profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          password: newPassword,
+          first_login: false
+        })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+
+      // Update local storage session
+      const updatedProfile = { ...profile, first_login: false, password: newPassword };
+      updateLocalSession(updatedProfile);
+      setProfile(updatedProfile);
+    } catch (err: any) {
+      setPassError(err.message || 'Failed to update password.');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const getTaskStatus = (taskId: string) => {
     const taskSubs = submissions.filter(s => s.task_id === taskId);
@@ -321,6 +354,69 @@ export default function StudentDashboard() {
           <p className="text-sm text-slate-400">
             {seeding ? 'Seeding default curriculum syllabus...' : 'Loading student dashboard...'}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Force first-time users to change password
+  if (profile?.first_login) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4">
+        <div className="w-full max-w-md glass-card p-8 border border-indigo-500/20 shadow-2xl relative overflow-hidden">
+          <div className="absolute -top-24 -left-24 h-48 w-48 bg-indigo-500/10 blur-3xl rounded-full" />
+          
+          <div className="relative space-y-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="h-12 w-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3 shadow">
+                <Key className="h-6 w-6" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Change Your Password</h2>
+              <p className="text-xs text-slate-400 leading-normal mt-1 max-w-[280px]">
+                This is your first login. For security reasons, you must update your password before proceeding.
+              </p>
+            </div>
+
+            {passError && (
+              <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-3.5 text-xs text-rose-400">
+                {passError}
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">New Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="At least 5 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full glass-input text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Confirm Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Re-type password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full glass-input text-xs"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={changingPassword}
+                className="w-full flex items-center justify-center gap-1.5 rounded bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 py-2.5 text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+              >
+                {changingPassword ? 'Updating Password...' : 'Save & Continue'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
