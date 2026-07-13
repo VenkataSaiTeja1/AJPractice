@@ -8,6 +8,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Code content is required' }, { status: 400 });
     }
 
+    // Query Piston runtimes dynamically to detect the exact installed Java version
+    let javaVersion = '15.0.2'; // Fallback default
+    try {
+      const runtimesRes = await fetch('https://emkc.org/api/v2/piston/runtimes');
+      if (runtimesRes.ok) {
+        const runtimes = await runtimesRes.json();
+        const javaRuntime = runtimes.find((r: any) => r.language === 'java' || (r.aliases && r.aliases.includes('java')));
+        if (javaRuntime && javaRuntime.version) {
+          javaVersion = javaRuntime.version;
+        }
+      }
+    } catch (err) {
+      console.warn('Dynamic runtime detection failed, using fallback version:', err);
+    }
+
     const response = await fetch('https://emkc.org/api/v2/piston/execute', {
       method: 'POST',
       headers: {
@@ -15,7 +30,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         language: 'java',
-        version: '15.0.0',
+        version: javaVersion,
         files: [
           {
             name: 'Main.java',
