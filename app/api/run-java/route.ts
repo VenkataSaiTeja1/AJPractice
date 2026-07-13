@@ -22,11 +22,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Code content is required' }, { status: 400 });
     }
 
-    // Check if Java compiler (javac) is installed locally on the hosting environment
+    // Check if Java compiler (javac) is installed locally on the hosting environment (VPS/Local PC)
     const localJavaAvailable = await isCommandAvailable('javac');
 
     if (localJavaAvailable) {
-      // METHOD A: Execute locally on the hosting server/PC using local JDK
+      // METHOD A: Execute locally on the hosting server/PC using local JDK (free & unlimited)
       const runId = crypto.randomUUID();
       executionDir = path.join(process.cwd(), '.temp_runs', runId);
       fs.mkdirSync(executionDir, { recursive: true });
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       const sourceFilePath = path.join(executionDir, 'Main.java');
       fs.writeFileSync(sourceFilePath, code);
 
-      // Compile
+      // Compile code
       const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
         exec('javac Main.java', { cwd: executionDir, timeout: 5000 }, (error, stdout, stderr) => {
           if (error) {
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         });
       }
 
-      // Execute
+      // Execute code
       const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
         const child = spawn('java', ['Main'], { cwd: executionDir });
 
@@ -118,39 +118,27 @@ export async function POST(req: Request) {
       });
 
     } else {
-      // METHOD B: Execute via Piston API fallback (for serverless environments like Vercel with no JDK)
-      // Checks for custom self-hosted Piston URL, or defaults to the public Piston instance
-      const pistonUrl = process.env.PISTON_URL || 'https://emkc.org/api/v2/piston/execute';
+      // METHOD B: Execute via JDoodle API (for serverless environments like Vercel with no JDK)
+      const clientId = process.env.JDOODLE_CLIENT_ID;
+      const clientSecret = process.env.JDOODLE_CLIENT_SECRET;
 
-      // Resolve Java version
-      let javaVersion = '15.0.2';
-      try {
-        const runtimesRes = await fetch(pistonUrl.replace('/execute', '/runtimes'));
-        if (runtimesRes.ok) {
-          const runtimes = await runtimesRes.json();
-          const javaRuntime = runtimes.find((r: any) => r.language === 'java' || (r.aliases && r.aliases.includes('java')));
-          if (javaRuntime && javaRuntime.version) {
-            javaVersion = javaRuntime.version;
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to detect remote runtime version, using default:', err);
+      if (!clientId || !clientSecret) {
+        return NextResponse.json({ 
+          error: 'Online compiler setup error: JDoodle environment credentials are missing. Please configure JDOODLE_CLIENT_ID and JDOODLE_CLIENT_SECRET.' 
+        }, { status: 500 });
       }
 
-      const response = await fetch(pistonUrl, {
+      const response = await fetch('https://api.jdoodle.com/v1/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          clientId,
+          clientSecret,
+          script: code,
           language: 'java',
-          version: javaVersion,
-          files: [
-            {
-              name: 'Main.java',
-              content: code,
-            },
-          ],
+          versionIndex: '4', // JDK 17
           stdin: stdin,
         }),
       });
@@ -158,12 +146,29 @@ export async function POST(req: Request) {
       if (!response.ok) {
         const errorMsg = await response.text();
         return NextResponse.json({ 
-          error: `Compiler Service Error: ${errorMsg}. Please verify Piston whitelist configurations or host server environment JDK.` 
+          error: `JDoodle API service failed: ${errorMsg}` 
         }, { status: 500 });
       }
 
       const data = await response.json();
-      return NextResponse.json(data);
+      
+      // Parse output for potential error markers (standard Java compiler output has "error" or "Exception in thread")
+      const outputText = data.output || '';
+      const isError = outputText.toLowerCase().includes('error:') || 
+                      outputText.includes('Exception in thread') ||
+                      outputText.toLowerCase().includes('compilation error');
+
+      return NextResponse.json({
+        language: 'java',
+        version: 'jdoodle-jdk17',
+        run: {
+          stdout: isError ? '' : outputText,
+          stderr: isError ? outputText : '',
+          code: isError ? 1 : 0,
+          signal: null,
+          output: outputText
+        }
+      });
     }
 
   } catch (error: any) {
