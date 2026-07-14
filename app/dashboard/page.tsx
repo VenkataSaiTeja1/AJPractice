@@ -49,8 +49,9 @@ export default function StudentDashboard() {
 
       if (tasksError) throw tasksError;
 
-      // Filter tasks by the student's Year of Study (2nd year vs 3rd year)
-      const yearTasks = (dbTasks || []).filter(t => t.year === userProfile.year);
+      // Filter tasks by the student's Year of Study (defaulting to 3rd year if null)
+      const studentYear = userProfile.year || 3;
+      const yearTasks = (dbTasks || []).filter(t => t.year === studentYear);
       setTasks(yearTasks);
 
       // Fetch Submissions for this student

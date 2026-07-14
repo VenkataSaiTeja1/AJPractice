@@ -30,7 +30,7 @@ export default function FullscreenEnforcer({ children }: { children: React.React
     const handleViolation = () => {
       // Trigger logout immediately
       logoutUser();
-      alert('Academic Integrity Protocol: You have been logged out for exiting fullscreen mode, switching tabs, or losing window focus.');
+      alert('Academic Integrity Protocol: You have been logged out for exiting fullscreen mode or switching tabs.');
       router.push('/login');
     };
 
@@ -50,19 +50,13 @@ export default function FullscreenEnforcer({ children }: { children: React.React
       }
     };
 
-    const handleWindowBlur = () => {
-      handleViolation();
-    };
-
     // Bind event listeners
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleWindowBlur);
     };
   }, [isStudent, router]);
 
