@@ -406,60 +406,50 @@ export default function StudentDashboard() {
         )}
       </div>
 
-      {/* SYLLABUS UNITS */}
+      {/* SYLLABUS TASKS */}
       <div className="space-y-6">
         <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-indigo-400" /> Advanced Java Syllabus Units
+          <BookOpen className="h-5 w-5 text-indigo-400" /> Syllabus Practice Tasks
         </h3>
 
-        {units.map((unitNum) => {
-          const unitTasks = tasks.filter(t => t.unit_number === unitNum);
-          
-          if (unitTasks.length === 0) return null;
-
-          return (
-            <div key={unitNum} className="glass-card border border-slate-800 overflow-hidden shadow-lg">
-              <div className="bg-slate-900/40 border-b border-slate-800 px-6 py-4">
-                <h4 className="text-sm font-bold text-white tracking-wide uppercase">
-                  {getUnitName(unitNum)}
-                </h4>
-              </div>
-
-              <div className="divide-y divide-slate-800/80">
-                {unitTasks.map((task) => {
-                  const status = getTaskStatus(task.id);
-                  return (
-                    <Link 
-                      key={task.id}
-                      href={`/practice/${task.id}`}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-900/20 transition-all group gap-4 cursor-pointer"
-                    >
-                      <div className="space-y-1.5 max-w-2xl">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-white font-semibold text-base group-hover:text-indigo-400 transition-colors">
-                            {task.title}
-                          </span>
-                          {getTaskTypeBadge(task.type)}
-                        </div>
-                        <p className="text-xs text-slate-400 font-light leading-relaxed">
-                          {task.description}
-                        </p>
+        <div className="glass-card border border-slate-800 overflow-hidden shadow-lg">
+          <div className="divide-y divide-slate-800/80 bg-slate-950/20">
+            {tasks.length > 0 ? (
+              tasks.map((task) => {
+                const status = getTaskStatus(task.id);
+                return (
+                  <Link 
+                    key={task.id}
+                    href={`/practice/${task.id}`}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-900/20 transition-all group gap-4 cursor-pointer"
+                  >
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-white font-semibold text-base group-hover:text-indigo-400 transition-colors">
+                          {task.title}
+                        </span>
+                        {getTaskTypeBadge(task.type)}
                       </div>
+                      <p className="text-xs text-slate-400 font-light leading-relaxed">
+                        {task.description}
+                      </p>
+                    </div>
 
-                      <div className="flex items-center gap-4 justify-between sm:justify-end">
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(status)}
-                          {getStatusBadge(status)}
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                    <div className="flex items-center gap-4 justify-between sm:justify-end">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(status)}
+                        {getStatusBadge(status)}
                       </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+                      <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="p-8 text-center text-slate-500 italic">No practice tasks assigned yet.</div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

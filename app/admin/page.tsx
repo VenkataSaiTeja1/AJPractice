@@ -6,7 +6,7 @@ import { supabase, getCurrentSession } from '@/lib/supabase';
 import { 
   Users, ClipboardList, TrendingUp, AlertTriangle, Download, 
   Search, Filter, Edit, CheckCircle, Clock, XCircle, RefreshCw, 
-  Send, Plus, Trash, BookOpen, Key, Check, PlusCircle, LayoutGrid, BarChart2
+  Send, Plus, Trash, BookOpen, Key, Check, PlusCircle, LayoutGrid, BarChart2, CheckCircle2
 } from 'lucide-react';
 
 export default function TeacherAdminDashboard() {
@@ -42,8 +42,6 @@ export default function TeacherAdminDashboard() {
 
   // Manual review modal states
   const [selectedSub, setSelectedSub] = useState<any>(null);
-  const [reviewScore, setReviewScore] = useState(0);
-  const [reviewStatus, setReviewStatus] = useState<'passed' | 'failed' | 'pending'>('pending');
   const [reviewFeedback, setReviewFeedback] = useState('');
   const [savingReview, setSavingReview] = useState(false);
 
@@ -89,7 +87,10 @@ export default function TeacherAdminDashboard() {
     activeStudents: 0,
     totalSubmissions: 0,
     completionRate: 0,
-    pendingReviews: 0
+    pendingReviews: 0,
+    verifiedSubmissions: 0,
+    totalCodingSubmissions: 0,
+    inReviewProgress: 100
   });
 
   const [unitBottlenecks, setUnitBottlenecks] = useState<any[]>([]);
@@ -125,7 +126,7 @@ export default function TeacherAdminDashboard() {
       if (tasksError) throw tasksError;
       setTasks(dbTasks || []);
 
-      // 3. Fetch submissions
+      // 3. Fetch submissions (including years and types)
       const { data: dbSubmissions, error: subsError } = await supabase
         .from('submissions')
         .select(`
@@ -136,40 +137,58 @@ export default function TeacherAdminDashboard() {
         .order('submitted_at', { ascending: false });
 
       if (subsError) throw subsError;
-      setSubmissions(dbSubmissions || []);
+      
+      // Filter out run executions from general submissions logs feed to keep it clean
+      const submissionsOnly = (dbSubmissions || []).filter(s => !s.is_run);
+      setSubmissions(submissionsOnly);
+
+      // Set initial monitor task if not set and tasks exist
+      if (dbTasks && dbTasks.length > 0 && !selectedMonitorTaskId) {
+        setSelectedMonitorTaskId(dbTasks[0].id);
+      }
 
       // Calculate Stats
       const activeStudents = studentProfiles.length;
-      const totalSubmissions = dbSubmissions ? dbSubmissions.length : 0;
-      const pendingReviews = dbSubmissions ? dbSubmissions.filter(s => s.status === 'pending').length : 0;
+      const totalSubmissions = submissionsOnly.length;
+      const pendingReviews = submissionsOnly.filter(s => s.status === 'pending').length;
 
       let completionRate = 0;
       if (activeStudents > 0 && dbTasks && dbTasks.length > 0) {
-        // Group possible completions by students mapping to task years
         let totalPossibleCompletions = 0;
         studentProfiles.forEach(student => {
           const matchingTasksCount = (dbTasks || []).filter(t => t.year === student.year).length;
           totalPossibleCompletions += matchingTasksCount;
         });
 
-        const passedCount = dbSubmissions ? dbSubmissions.filter(s => s.status === 'passed').length : 0;
+        const passedCount = submissionsOnly.filter(s => s.status === 'passed').length;
         completionRate = totalPossibleCompletions > 0 
           ? Math.round((passedCount / totalPossibleCompletions) * 100) 
           : 0;
       }
 
+      // Verification stats (for coding tasks)
+      const codingSubmissions = submissionsOnly.filter(s => s.tasks && s.tasks.type === 'coding');
+      const totalCodingSubmissions = codingSubmissions.length;
+      const verifiedSubmissions = codingSubmissions.filter(s => s.is_verified).length;
+      const inReviewProgress = totalCodingSubmissions > 0 
+        ? Math.round((verifiedSubmissions / totalCodingSubmissions) * 100)
+        : 100;
+
       setStats({
         activeStudents,
         totalSubmissions,
         completionRate: isNaN(completionRate) ? 0 : completionRate,
-        pendingReviews
+        pendingReviews,
+        verifiedSubmissions,
+        totalCodingSubmissions,
+        inReviewProgress
       });
 
       // Calculate Unit Bottlenecks
       const unitStats = [1, 2, 3, 4, 5].map(unitNum => {
         const unitTasks = (dbTasks || []).filter(t => t.unit_number === unitNum);
         const unitTaskIds = unitTasks.map(t => t.id);
-        const unitSubs = (dbSubmissions || []).filter(s => unitTaskIds.includes(s.task_id));
+        const unitSubs = submissionsOnly.filter(s => unitTaskIds.includes(s.task_id));
         
         const total = unitSubs.length;
         const failed = unitSubs.filter(s => s.status === 'failed').length;
@@ -213,7 +232,6 @@ export default function TeacherAdminDashboard() {
   useEffect(() => {
     const yearTasks = tasks.filter(t => t.year === Number(monitorYearFilter));
     if (yearTasks.length > 0) {
-      // Find if current selected task is in the filtered list
       const matches = yearTasks.some(t => t.id === selectedMonitorTaskId);
       if (!matches) {
         setSelectedMonitorTaskId(yearTasks[0].id);
@@ -496,7 +514,6 @@ export default function TeacherAdminDashboard() {
         payload.cloud_ide_url = null;
       } else if (taskType === 'coding') {
         payload.starter_code = taskStarter;
-        // Keep expected_output updated with first test case's expected output for backwards compatibility
         payload.expected_output = codingTestCases[0]?.expected || '';
         payload.cloud_ide_url = null;
         payload.metadata = { testCases: codingTestCases };
@@ -547,15 +564,43 @@ export default function TeacherAdminDashboard() {
     }
   };
 
-  // SUBMISSION REVIEW
+  // SUBMISSION REVIEW GRADING ACTIONS (Verified Wipes Code / Mark For Review Retains It)
   const handleOpenReview = (sub: any) => {
     setSelectedSub(sub);
-    setReviewScore(sub.score);
-    setReviewStatus(sub.status);
     setReviewFeedback(sub.feedback || '');
   };
 
-  const handleSaveReview = async () => {
+  const handleVerifySubmission = async () => {
+    if (!selectedSub) return;
+    setSavingReview(true);
+
+    try {
+      // Wipes code from database (submitted_content reset to verified text) to conserve storage
+      const { error } = await supabase
+        .from('submissions')
+        .update({
+          is_verified: true,
+          is_review: false,
+          status: 'passed',
+          score: 100, // Passed verified code
+          submitted_content: '[Verified - Code Deleted to Save Storage]',
+          feedback: reviewFeedback || 'Submission manually verified. Code purged to conserve system storage.'
+        })
+        .eq('id', selectedSub.id);
+
+      if (error) throw error;
+
+      alert('Submission verified and code purged successfully!');
+      setSelectedSub(null);
+      fetchAdminData();
+    } catch (err: any) {
+      alert(`Verification failed: ${err.message}`);
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  const handleMarkForReview = async () => {
     if (!selectedSub) return;
     setSavingReview(true);
 
@@ -563,19 +608,20 @@ export default function TeacherAdminDashboard() {
       const { error } = await supabase
         .from('submissions')
         .update({
-          score: reviewScore,
-          status: reviewStatus,
-          feedback: reviewFeedback
+          is_verified: false,
+          is_review: true,
+          status: 'pending',
+          feedback: reviewFeedback || 'Marked for review. Code snippet retained.'
         })
         .eq('id', selectedSub.id);
 
       if (error) throw error;
 
-      alert('Review updated successfully!');
+      alert('Submission marked for review.');
       setSelectedSub(null);
       fetchAdminData();
     } catch (err: any) {
-      alert(`Failed to save review: ${err.message}`);
+      alert(`Action failed: ${err.message}`);
     } finally {
       setSavingReview(false);
     }
@@ -585,7 +631,7 @@ export default function TeacherAdminDashboard() {
   const handleExportCSV = () => {
     if (students.length === 0) return;
 
-    let csvContent = 'data:text/csv;charset=utf-8,Roll Number,Name,Year,Unit I Score,Unit II Score,Unit III Score,Unit IV Score,Unit V Score,Average Score\n';
+    let csvContent = 'data:text/csv;charset=utf-8,Roll Number,Name,Year,Score Average\n';
 
     students.forEach(student => {
       const studentSubs = submissions.filter(s => s.student_id === student.id);
@@ -598,7 +644,7 @@ export default function TeacherAdminDashboard() {
 
       const avgScore = Math.round(unitScores.reduce((a, b) => a + b, 0) / 5);
 
-      csvContent += `"${student.roll_number || 'N/A'}","${student.full_name}",${student.year || 'N/A'},${unitScores.join(',')},${avgScore}\n`;
+      csvContent += `"${student.roll_number || 'N/A'}","${student.full_name}",${student.year || 'N/A'},${avgScore}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -767,6 +813,30 @@ export default function TeacherAdminDashboard() {
             </div>
           </div>
 
+          {/* Code Verification Review Progress Bar (storage monitoring) */}
+          <div className="glass-card p-6 border border-slate-800 space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  Code Verification Review Progress
+                </h3>
+                <p className="text-[11px] text-slate-500 font-light mt-0.5">
+                  Tracks coding exercises reviewed and verified vs pending review to manage database storage.
+                </p>
+              </div>
+              <span className="text-xs font-mono font-semibold text-indigo-450">
+                {stats.verifiedSubmissions} / {stats.totalCodingSubmissions} Verified ({stats.inReviewProgress}%)
+              </span>
+            </div>
+            <div className="w-full bg-slate-900 border border-slate-800 rounded-full h-3 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-emerald-500 to-indigo-500 h-3 rounded-full transition-all duration-500" 
+                style={{ width: `${stats.inReviewProgress}%` }}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Unit Bottlenecks */}
             <div className="lg:col-span-1 glass-card p-5 border border-slate-800 space-y-4">
@@ -775,14 +845,14 @@ export default function TeacherAdminDashboard() {
                   <AlertTriangle className="h-4.5 w-4.5 text-amber-500" />
                   Syllabus Bottlenecks
                 </h3>
-                <p className="text-[11px] text-slate-500 leading-normal font-light mt-1">Tracks student failure rates to highlight units presenting structural blocks.</p>
+                <p className="text-[11px] text-slate-500 leading-normal font-light mt-1">Tracks student failure rates to highlight exercises presenting blocks.</p>
               </div>
 
               <div className="space-y-4">
                 {unitBottlenecks.map(ub => (
                   <div key={ub.unit} className="space-y-1">
                     <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-slate-300">Unit {ub.unit}</span>
+                      <span className="text-slate-300">Exercise Group {ub.unit}</span>
                       <span className="text-rose-400">{ub.failRate}% Fail Rate</span>
                     </div>
                     <div className="w-full bg-slate-900 border border-slate-800 rounded-full h-2 overflow-hidden">
@@ -869,9 +939,17 @@ export default function TeacherAdminDashboard() {
                               </td>
                               <td className="px-4 py-3">
                                 <div className="font-medium text-slate-200">{taskDetails.title}</div>
-                                <div className="text-[10px] text-slate-500">Unit: {taskDetails.unit_number} | {taskDetails.type}</div>
+                                <div className="text-[10px] text-slate-500">{taskDetails.type}</div>
                               </td>
-                              <td className="px-4 py-3">{getStatusBadge(sub.status)}</td>
+                              <td className="px-4 py-3">
+                                {sub.is_verified ? (
+                                  <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-500/20">Verified</span>
+                                ) : sub.is_review ? (
+                                  <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400 border border-amber-500/20">In Review</span>
+                                ) : (
+                                  getStatusBadge(sub.status)
+                                )}
+                              </td>
                               <td className="px-4 py-3 font-semibold">{sub.score}%</td>
                               <td className="px-4 py-3 text-right">
                                 <button
@@ -943,7 +1021,7 @@ export default function TeacherAdminDashboard() {
                 {tasks.filter(t => t.year === Number(monitorYearFilter)).length > 0 ? (
                   tasks.filter(t => t.year === Number(monitorYearFilter)).map(t => (
                     <option key={t.id} value={t.id}>
-                      Unit {t.unit_number} - {t.title} ({t.type})
+                      {t.title} ({t.type})
                     </option>
                   ))
                 ) : (
@@ -1166,7 +1244,7 @@ export default function TeacherAdminDashboard() {
             <table className="min-w-full divide-y divide-slate-800 text-left text-xs text-slate-300">
               <thead className="bg-slate-900/60 text-slate-400 font-bold">
                 <tr>
-                  <th className="px-4 py-3">Unit</th>
+                  <th className="px-4 py-3">Task Group Order</th>
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Target Year</th>
                   <th className="px-4 py-3">Type</th>
@@ -1178,7 +1256,7 @@ export default function TeacherAdminDashboard() {
                 {tasks.length > 0 ? (
                   tasks.map(t => (
                     <tr key={t.id} className="hover:bg-slate-900/10">
-                      <td className="px-4 py-3 font-semibold text-slate-200">Unit {t.unit_number}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-200">Group {t.unit_number}</td>
                       <td className="px-4 py-3 font-semibold text-white">{t.title}</td>
                       <td className="px-4 py-3 font-semibold text-indigo-400">
                         {t.year === 2 ? '2nd Year (Java)' : '3rd Year (AJ)'}
@@ -1341,7 +1419,7 @@ export default function TeacherAdminDashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unit (1 to 5)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ordering Index (1 to 5)</label>
                   <input
                     type="number"
                     required
@@ -1577,16 +1655,16 @@ export default function TeacherAdminDashboard() {
         </div>
       )}
 
-      {/* MANUAL GRADING REVIEW OVERLAY MODAL */}
+      {/* MANUAL GRADING REVIEW OVERLAY MODAL (Verify & Wipe Code vs Mark For Review) */}
       {selectedSub && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-3xl glass-card border border-indigo-500/20 bg-slate-950 p-6 shadow-2xl relative flex flex-col justify-between max-h-[85vh] overflow-y-auto">
             <div className="space-y-4">
               <div className="flex justify-between items-start border-b border-slate-800 pb-3">
                 <div>
-                  <h2 className="text-base font-bold text-white">Review Student Submission</h2>
+                  <h2 className="text-base font-bold text-white font-sans">Verify Student Submission</h2>
                   <p className="text-[11px] text-slate-400 font-light mt-0.5">
-                    Grading: <span className="font-semibold text-white">{(selectedSub.profiles || {}).full_name}</span> (Roll: {(selectedSub.profiles || {}).roll_number || 'N/A'} | Year: {(selectedSub.profiles || {}).year || 'N/A'})
+                    Student: <span className="font-semibold text-white">{(selectedSub.profiles || {}).full_name}</span> (Roll: {(selectedSub.profiles || {}).roll_number || 'N/A'} | Year: {(selectedSub.profiles || {}).year || 'N/A'})
                   </p>
                 </div>
                 <button
@@ -1598,10 +1676,22 @@ export default function TeacherAdminDashboard() {
               </div>
 
               <div className="p-3 bg-slate-900/40 rounded-lg border border-slate-800/80 text-xs">
-                <span className="font-semibold text-indigo-400 uppercase tracking-wide text-[10px]">
-                  {(selectedSub.tasks || {}).type} Unit {(selectedSub.tasks || {}).unit_number}
+                <span className="font-semibold text-indigo-400 uppercase tracking-wide text-[9px] block">
+                  {(selectedSub.tasks || {}).type}
                 </span>
                 <h4 className="text-white font-bold mt-0.5">{(selectedSub.tasks || {}).title}</h4>
+              </div>
+
+              {/* Status and score overview banner */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-950 p-3 rounded border border-slate-900 text-xs items-center">
+                <div>
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wide font-semibold block">Auto-Grading Score</span>
+                  <span className="text-lg font-extrabold text-white">{selectedSub.score}%</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wide font-semibold block">Evaluation Status</span>
+                  <span className="mt-1.5 block">{getStatusBadge(selectedSub.status)}</span>
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -1619,68 +1709,55 @@ export default function TeacherAdminDashboard() {
                     </a>
                   </div>
                 ) : (
-                  <pre className="p-4 bg-slate-950/80 border border-slate-900 rounded-lg font-mono text-[11px] text-emerald-400 overflow-auto max-h-[220px] select-all leading-normal whitespace-pre">
+                  <pre className="p-4 bg-slate-950/80 border border-slate-900 rounded-lg font-mono text-[11px] text-emerald-400 overflow-auto max-h-[200px] select-all leading-normal whitespace-pre">
                     {selectedSub.submitted_content}
                   </pre>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Score (0 - 100)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={reviewScore}
-                    onChange={(e) => setReviewScore(Number(e.target.value))}
-                    className="w-full glass-input text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</label>
-                  <select
-                    value={reviewStatus}
-                    onChange={(e) => setReviewStatus(e.target.value as any)}
-                    className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
-                  >
-                    <option value="passed">Passed</option>
-                    <option value="failed">Failed</option>
-                    <option value="pending">Pending</option>
-                  </select>
-                </div>
-              </div>
-
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Teacher Comments & Feedback</label>
                 <textarea
-                  placeholder="Provide instructions or feedback on code revisions..."
+                  placeholder="Provide comments or revision feedback here..."
                   value={reviewFeedback}
                   onChange={(e) => setReviewFeedback(e.target.value)}
-                  rows={3}
+                  rows={2}
                   className="w-full glass-input text-xs resize-none"
                 />
               </div>
             </div>
 
-            <div className="border-t border-slate-800 pt-4 mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedSub(null)}
-                className="rounded border border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-300 px-4 py-2 text-xs font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveReview}
-                disabled={savingReview}
-                className="inline-flex items-center gap-1.5 rounded bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 text-white px-5 py-2 text-xs font-bold cursor-pointer transition-all"
-              >
-                <Send className="h-3.5 w-3.5" />
-                {savingReview ? 'Saving review...' : 'Submit Evaluation'}
-              </button>
+            <div className="border-t border-slate-800 pt-4 mt-6 flex justify-between items-center gap-3">
+              <div>
+                <button
+                  type="button"
+                  onClick={handleMarkForReview}
+                  disabled={savingReview}
+                  className="inline-flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900 hover:bg-slate-850 text-amber-400 px-4 py-2 text-xs font-semibold cursor-pointer transition-all disabled:opacity-50"
+                >
+                  <Clock className="h-4 w-4" />
+                  Mark for Review
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSub(null)}
+                  className="rounded border border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-300 px-4 py-2 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifySubmission}
+                  disabled={savingReview}
+                  className="inline-flex items-center gap-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-600/50 text-white px-5 py-2 text-xs font-bold cursor-pointer transition-all shadow"
+                >
+                  <Check className="h-4 w-4" />
+                  {savingReview ? 'Verifying...' : 'Verify Submission (Wipe Code)'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

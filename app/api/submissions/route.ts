@@ -8,7 +8,7 @@ function normalizeString(str: string): string {
 
 export async function POST(req: Request) {
   try {
-    const { studentId, taskId, submittedContent } = await req.json();
+    const { studentId, taskId, submittedContent, isRun = false, stdin = '' } = await req.json();
 
     if (!studentId || !taskId || submittedContent === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -25,11 +25,76 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    // 2. Enforce 7-execution limit (runs + submissions) for coding tasks
+    if (task.type === 'coding') {
+      const { count, error: countError } = await supabase
+        .from('submissions')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', studentId)
+        .eq('task_id', taskId);
+
+      if (countError) {
+        return NextResponse.json({ error: `Database error checking execution limits: ${countError.message}` }, { status: 500 });
+      }
+
+      if (count !== null && count >= 7) {
+        return NextResponse.json({ 
+          error: 'Execution limit reached! You are only allowed 7 executions (including both runs and submissions) per task.' 
+        }, { status: 400 });
+      }
+    }
+
+    // Handle Sandbox Runs (Console Execution only)
+    if (isRun) {
+      try {
+        const runResponse = await fetch(`${new URL(req.url).origin}/api/run-java`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            code: submittedContent,
+            stdin: stdin
+          }),
+        });
+
+        if (!runResponse.ok) {
+          const runJavaErr = await runResponse.json().catch(() => ({}));
+          return NextResponse.json({ error: runJavaErr.error || 'Execution failed' }, { status: 500 });
+        }
+
+        const runResult = await runResponse.json();
+
+        // Save execution to submissions table as a run log to count towards the 7-execution limit
+        const { error: runLogErr } = await supabase
+          .from('submissions')
+          .insert({
+            student_id: studentId,
+            task_id: taskId,
+            submitted_content: '[Run execution - code not saved]',
+            status: 'failed', // Runs do not grade as passed
+            score: 0,
+            feedback: 'Console sandbox execution run.',
+            is_run: true
+          });
+
+        if (runLogErr) {
+          console.error('Failed to log run execution:', runLogErr.message);
+        }
+
+        return NextResponse.json(runResult);
+
+      } catch (err: any) {
+        return NextResponse.json({ error: `Run execution compiler error: ${err.message}` }, { status: 500 });
+      }
+    }
+
+    // Handle Submissions
     let status: 'passed' | 'failed' | 'pending' = 'pending';
     let score = 0;
     let feedback = '';
 
-    // 2. Grade based on Task Type
+    // Grade based on Task Type
     if (task.type === 'quiz') {
       try {
         const studentAnswers = JSON.parse(submittedContent);
@@ -146,6 +211,7 @@ export async function POST(req: Request) {
         status,
         score,
         feedback,
+        is_run: false
       })
       .select()
       .single();
@@ -168,6 +234,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get('studentId');
     const taskId = searchParams.get('taskId');
+    const includeRuns = searchParams.get('includeRuns') === 'true';
 
     let query = supabase.from('submissions').select('*, profiles(full_name, roll_number), tasks(title, unit_number, type)');
 
@@ -176,6 +243,10 @@ export async function GET(req: Request) {
     }
     if (taskId) {
       query = query.eq('task_id', taskId);
+    }
+    // Filter runs out by default to keep logs clean
+    if (!includeRuns) {
+      query = query.eq('is_run', false);
     }
 
     const { data, error } = await query.order('submitted_at', { ascending: false });

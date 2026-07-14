@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Play, Send, RefreshCw, Terminal, CheckCircle2, XCircle, AlertCircle, FileCode } from 'lucide-react';
+import { Play, Send, RefreshCw, Terminal, CheckCircle2, XCircle, AlertCircle, FileCode, ShieldAlert } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface CodingProps {
@@ -21,9 +21,10 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const [consoleError, setConsoleError] = useState('');
   const [exitCode, setExitCode] = useState<number | null>(null);
   
-  // Grading states
+  // Grading & Limits states
   const [gradeResult, setGradeResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [executionCount, setExecutionCount] = useState(0);
 
   // Line numbers helper
   const [lineNumbers, setLineNumbers] = useState<number[]>([1]);
@@ -32,6 +33,23 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
     const lines = code.split('\n').length;
     setLineNumbers(Array.from({ length: Math.max(lines, 1) }, (_, i) => i + 1));
   }, [code]);
+
+  // Fetch current execution count for this task
+  const fetchExecutionCount = async () => {
+    try {
+      const res = await fetch(`/api/submissions?studentId=${studentId}&taskId=${task.id}&includeRuns=true`);
+      if (res.ok) {
+        const data = await res.json();
+        setExecutionCount(data.length || 0);
+      }
+    } catch (e) {
+      console.error('Failed to load execution count:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchExecutionCount();
+  }, [studentId, task.id]);
 
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset the editor to the starter template?')) {
@@ -44,6 +62,11 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   };
 
   const handleRunCode = async () => {
+    if (executionCount >= 7) {
+      setErrorMessage('Execution limit reached! You are allowed a maximum of 7 executions per coding exercise.');
+      return;
+    }
+
     setRunning(true);
     setConsoleOutput('');
     setConsoleError('');
@@ -51,20 +74,26 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
     setErrorMessage('');
 
     try {
-      const response = await fetch('/api/run-java', {
+      // Calls submissions route with isRun flag to execute and log run
+      const response = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, stdin })
+        body: JSON.stringify({ 
+          studentId, 
+          taskId: task.id, 
+          submittedContent: code, 
+          isRun: true, 
+          stdin 
+        })
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Compiler service returned an error.');
+        throw new Error(data.error || 'Compiler service returned an error.');
       }
 
-      const data = await response.json();
       const run = data.run || {};
-
       setConsoleOutput(run.stdout || '');
       setConsoleError(run.stderr || '');
       setExitCode(run.code);
@@ -72,6 +101,10 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
       if (run.stderr) {
         setConsoleError(run.stderr);
       }
+
+      // Re-fetch count
+      await fetchExecutionCount();
+
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to run Java application.');
     } finally {
@@ -80,6 +113,11 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   };
 
   const handleSubmitCode = async () => {
+    if (executionCount >= 7) {
+      setErrorMessage('Execution limit reached! You are allowed a maximum of 7 executions per coding exercise.');
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage('');
     setGradeResult(null);
@@ -91,16 +129,16 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
         body: JSON.stringify({
           studentId,
           taskId: task.id,
-          submittedContent: code
+          submittedContent: code,
+          isRun: false
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to record submission.');
-      }
-
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to record submission.');
+      }
       
       if (data.success) {
         setGradeResult(data.submission);
@@ -114,6 +152,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
         }
         
         onSubmitted();
+        // Re-fetch count
+        await fetchExecutionCount();
       } else {
         setErrorMessage(data.error || 'Auto-grading failed.');
       }
@@ -123,6 +163,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
       setSubmitting(false);
     }
   };
+
+  const limitReached = executionCount >= 7;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -135,9 +177,19 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
             <FileCode className="h-4.5 w-4.5 text-indigo-400" />
             <span className="text-xs font-semibold text-slate-200 font-mono">Main.java</span>
           </div>
+          
+          {/* Execution Counter */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10.5px] font-mono font-medium">
+            <span className="text-slate-500">Attempts:</span>
+            <span className={limitReached ? 'text-rose-400 font-bold' : executionCount >= 5 ? 'text-amber-400' : 'text-indigo-400'}>
+              {executionCount} / 7
+            </span>
+          </div>
+
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-medium cursor-pointer transition-colors"
+            disabled={limitReached}
+            className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-medium cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             Reset Code
@@ -157,7 +209,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           <textarea
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="flex-1 pl-3 bg-transparent text-slate-100 font-mono text-xs sm:text-sm leading-6 outline-none border-none resize-none h-full overflow-y-auto whitespace-pre tab-size-4"
+            disabled={limitReached}
+            className="flex-1 pl-3 bg-transparent text-slate-100 font-mono text-xs sm:text-sm leading-6 outline-none border-none resize-none h-full overflow-y-auto whitespace-pre tab-size-4 disabled:cursor-not-allowed"
             style={{ tabSize: 4 }}
             placeholder="// Enter your Java code here"
             spellCheck={false}
@@ -174,7 +227,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
             value={stdin}
             onChange={(e) => setStdin(e.target.value)}
             rows={2}
-            className="w-full glass-input font-mono text-xs resize-none"
+            disabled={limitReached}
+            className="w-full glass-input font-mono text-xs resize-none disabled:cursor-not-allowed"
           />
         </div>
 
@@ -182,8 +236,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
         <div className="bg-slate-950/80 px-4 py-3 border-t border-slate-800/80 flex justify-between items-center">
           <button
             onClick={handleRunCode}
-            disabled={running || submitting}
-            className="flex items-center gap-1.5 rounded bg-slate-900 border border-slate-800 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all cursor-pointer"
+            disabled={running || submitting || limitReached}
+            className="flex items-center gap-1.5 rounded bg-slate-900 border border-slate-800 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-850 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Play className="h-3.5 w-3.5 text-indigo-400" />
             {running ? 'Running...' : 'Run Code'}
@@ -191,8 +245,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           
           <button
             onClick={handleSubmitCode}
-            disabled={running || submitting}
-            className="flex items-center gap-1.5 rounded bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 px-5 py-2 text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+            disabled={running || submitting || limitReached}
+            className="flex items-center gap-1.5 rounded bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 px-5 py-2 text-xs font-bold text-white transition-all shadow-md cursor-pointer disabled:cursor-not-allowed"
           >
             <Send className="h-3.5 w-3.5" />
             {submitting ? 'Verifying...' : 'Submit Work'}
@@ -211,6 +265,16 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           </div>
 
           <div className="flex-1 bg-slate-950/60 p-4 font-mono text-xs overflow-y-auto space-y-3">
+            {limitReached && (
+              <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-4 flex items-start gap-2.5 text-rose-400">
+                <ShieldAlert className="h-5 w-5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-bold">Execution Limit Reached</p>
+                  <p className="text-[11px] leading-normal font-light">You have executed/submitted this code 7 times. No more runs or submissions are permitted for this exercise.</p>
+                </div>
+              </div>
+            )}
+            
             {running ? (
               <div className="flex items-center gap-2 text-slate-400">
                 <RefreshCw className="h-4 w-4 animate-spin text-indigo-400" />
@@ -237,11 +301,13 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
                 )}
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-500 text-center font-sans space-y-1.5">
-                <Terminal className="h-8 w-8 text-slate-600" />
-                <p className="text-sm font-semibold">Console Output is empty</p>
-                <p className="text-xs font-light max-w-[250px]">Click &quot;Run Code&quot; to compile and execute your Java code.</p>
-              </div>
+              !limitReached && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 text-center font-sans space-y-1.5">
+                  <Terminal className="h-8 w-8 text-slate-600" />
+                  <p className="text-sm font-semibold">Console Output is empty</p>
+                  <p className="text-xs font-light max-w-[250px]">Click &quot;Run Code&quot; to compile and execute your Java code.</p>
+                </div>
+              )
             )}
           </div>
         </div>
@@ -291,7 +357,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
                   Once you submit your program, we will run and compare it against the expected test cases.
                   <br />
                   <span className="font-semibold text-slate-300">Expected console output:</span>
-                  <pre className="mt-1.5 p-2 bg-slate-950/60 border border-slate-900 rounded font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">{task.expected_output}</pre>
+                  <pre className="mt-1.5 p-2 bg-slate-950/60 border border-slate-900 rounded font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">{task.expected_output || 'Multiple test cases configured.'}</pre>
                 </div>
               )
             )}
