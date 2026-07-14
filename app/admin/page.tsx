@@ -564,6 +564,210 @@ export default function TeacherAdminDashboard() {
     }
   };
 
+  // CSV PARSER (RFC 4180 compliant)
+  const parseCSV = (text: string): string[][] => {
+    const lines: string[][] = [];
+    let row: string[] = [""];
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      const next = text[i+1];
+      if (c === '"') {
+        if (inQuotes && next === '"') {
+          row[row.length - 1] += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (c === ',' && !inQuotes) {
+        row.push("");
+      } else if ((c === '\r' || c === '\n') && !inQuotes) {
+        if (c === '\r' && next === '\n') {
+          i++;
+        }
+        lines.push(row);
+        row = [""];
+      } else {
+        row[row.length - 1] += c;
+      }
+    }
+    if (row.length > 1 || row[0] !== "") {
+      lines.push(row);
+    }
+    return lines;
+  };
+
+  // STUDENT CSV BATCH IMPORT
+  const handleStudentCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const text = evt.target?.result as string;
+      if (!text) return;
+
+      try {
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          alert('CSV file must have a header row and at least one student data row.');
+          return;
+        }
+
+        const headers = rows[0].map(h => h.trim().toLowerCase());
+        
+        const rollIdx = headers.findIndex(h => h.includes('roll') || h.includes('no.'));
+        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('student'));
+        const yearIdx = headers.findIndex(h => h.includes('year') || h.includes('study'));
+        const passIdx = headers.findIndex(h => h.includes('password') || h.includes('pass'));
+
+        if (rollIdx === -1 || nameIdx === -1 || yearIdx === -1) {
+          alert('Could not map CSV headers. Please ensure the CSV contains columns: "Roll Number", "Full Name", and "Year of Study". Optional: "Password".');
+          return;
+        }
+
+        setLoading(true);
+        let importedCount = 0;
+        let errors: string[] = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length < 3 || !row[rollIdx]?.trim()) continue;
+
+          const roll = row[rollIdx].trim();
+          const name = row[nameIdx].trim();
+          const yearRaw = row[yearIdx].trim();
+          const password = passIdx !== -1 ? row[passIdx].trim() : 'student123';
+
+          const year = parseInt(yearRaw) === 2 ? 2 : 3;
+          const generatedEmail = `${roll.toLowerCase()}@portal.com`;
+
+          try {
+            // Check existing profile
+            const { data: existing } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('roll_number', roll)
+              .maybeSingle();
+
+            if (existing) {
+              errors.push(`Row #${i + 1}: Student with Roll Number ${roll} already exists.`);
+              continue;
+            }
+
+            const { error: insertErr } = await supabase
+              .from('profiles')
+              .insert({
+                email: generatedEmail,
+                password: password || 'student123',
+                full_name: name,
+                roll_number: roll,
+                role: 'student',
+                first_login: true,
+                year
+              });
+
+            if (insertErr) throw insertErr;
+            importedCount++;
+          } catch (err: any) {
+            errors.push(`Row #${i + 1} (${roll}): ${err.message}`);
+          }
+        }
+
+        alert(`Import complete!\nSuccessfully imported: ${importedCount} students.${errors.length > 0 ? `\n\nErrors encountered:\n${errors.join('\n')}` : ''}`);
+        fetchAdminData();
+      } catch (err: any) {
+        alert(`Failed to parse CSV file: ${err.message}`);
+      } finally {
+        setLoading(false);
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // QUIZ CSV QUESTIONS IMPORT
+  const handleQuizCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      if (!text) return;
+
+      try {
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          alert('CSV file must have a header row and at least one question row.');
+          return;
+        }
+
+        const headers = rows[0].map(h => h.trim().toLowerCase());
+
+        const questionIdx = headers.findIndex(h => h.includes('question'));
+        const optAIdx = headers.findIndex(h => h.includes('option a') || h === 'a');
+        const optBIdx = headers.findIndex(h => h.includes('option b') || h === 'b');
+        const optCIdx = headers.findIndex(h => h.includes('option c') || h === 'c');
+        const optDIdx = headers.findIndex(h => h.includes('option d') || h === 'd');
+        const correctIdx = headers.findIndex(h => h.includes('correct') || h.includes('answer'));
+
+        if (questionIdx === -1 || optAIdx === -1 || optBIdx === -1 || optCIdx === -1 || optDIdx === -1 || correctIdx === -1) {
+          alert('Could not map CSV headers. Please ensure the CSV contains columns: "Question", "Option A", "Option B", "Option C", "Option D", and "Correct Option" (1-4 index).');
+          return;
+        }
+
+        const importedQuestions: any[] = [];
+        let skippedRowsCount = 0;
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length < 6 || !row[questionIdx]?.trim()) continue;
+
+          const questionText = row[questionIdx].trim();
+          const optA = row[optAIdx].trim();
+          const optB = row[optBIdx].trim();
+          const optC = row[optCIdx].trim();
+          const optD = row[optDIdx].trim();
+          const correctValRaw = row[correctIdx].trim();
+
+          let correctOption = parseInt(correctValRaw);
+          if (isNaN(correctOption) || correctOption < 1 || correctOption > 4) {
+            if (correctValRaw.toLowerCase() === 'a') correctOption = 1;
+            else if (correctValRaw.toLowerCase() === 'b') correctOption = 2;
+            else if (correctValRaw.toLowerCase() === 'c') correctOption = 3;
+            else if (correctValRaw.toLowerCase() === 'd') correctOption = 4;
+            else {
+              skippedRowsCount++;
+              continue;
+            }
+          }
+
+          importedQuestions.push({
+            id: `q${quizQuestions.length + importedQuestions.length + 1}`,
+            question: questionText,
+            options: [optA, optB, optC, optD],
+            correctOption: correctOption - 1
+          });
+        }
+
+        setQuizQuestions(prev => {
+          const cleanedPrev = prev.filter(q => q.question.trim() !== '');
+          const merged = [...cleanedPrev, ...importedQuestions];
+          return merged.map((q, idx) => ({ ...q, id: `q${idx + 1}` }));
+        });
+
+        alert(`Imported ${importedQuestions.length} questions successfully!${skippedRowsCount > 0 ? `\n(Skipped ${skippedRowsCount} rows due to invalid correct answer option)` : ''}`);
+      } catch (err: any) {
+        alert(`Failed to parse CSV file: ${err.message}`);
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
   // SUBMISSION REVIEW GRADING ACTIONS (Verified Wipes Code / Mark For Review Retains It)
   const handleOpenReview = (sub: any) => {
     setSelectedSub(sub);
@@ -1160,9 +1364,19 @@ export default function TeacherAdminDashboard() {
                 </select>
               </div>
 
+              <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:text-white text-slate-300 font-bold text-xs cursor-pointer shadow transition-all">
+                <Download className="h-4 w-4 rotate-180" /> Import from CSV
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleStudentCSVImport}
+                  className="hidden"
+                />
+              </label>
+
               <button
                 onClick={() => handleOpenStudentModal()}
-                className="inline-flex items-center gap-1 px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow transition-all"
               >
                 <Plus className="h-4 w-4" /> Add Student
               </button>
@@ -1487,13 +1701,24 @@ export default function TeacherAdminDashboard() {
                 <div className="border border-slate-900 rounded-lg p-4 space-y-4 bg-slate-950/20 max-h-[250px] overflow-y-auto">
                   <div className="flex justify-between items-center border-b border-slate-900 pb-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Quiz Questions Manager</span>
-                    <button
-                      type="button"
-                      onClick={addQuizQuestion}
-                      className="inline-flex items-center gap-1 text-[10.5px] text-indigo-400 font-semibold cursor-pointer hover:text-indigo-300"
-                    >
-                      <PlusCircle className="h-3.5 w-3.5" /> Add Question
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <label className="inline-flex items-center gap-1 text-[10.5px] text-slate-400 font-semibold cursor-pointer hover:text-white transition-colors">
+                        <Download className="h-3.5 w-3.5 rotate-180 text-slate-400" /> Import from CSV
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={handleQuizCSVImport}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addQuizQuestion}
+                        className="inline-flex items-center gap-1 text-[10.5px] text-indigo-400 font-semibold cursor-pointer hover:text-indigo-300 transition-colors"
+                      >
+                        <PlusCircle className="h-3.5 w-3.5" /> Add Question
+                      </button>
+                    </div>
                   </div>
 
                   {quizQuestions.map((q, qIdx) => (
