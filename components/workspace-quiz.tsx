@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
-import { HelpCircle, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { HelpCircle, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface QuizProps {
   task: any;
   studentId: string;
+  submissions?: any[];
   onSubmitted: () => void;
 }
 
-export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProps) {
+export default function WorkspaceQuiz({ task, studentId, submissions = [], onSubmitted }: QuizProps) {
   const metadata = task.metadata || {};
   const questions = metadata.questions || [];
   
@@ -19,8 +20,22 @@ export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProp
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
 
+  // Load previous submission if it exists
+  useEffect(() => {
+    const previousSubmission = submissions.length > 0 ? submissions[0] : null;
+    if (previousSubmission) {
+      try {
+        const answers = JSON.parse(previousSubmission.submitted_content);
+        setSelectedAnswers(answers);
+        setResult(previousSubmission);
+      } catch (e) {
+        console.error('Failed to parse previous answers:', e);
+      }
+    }
+  }, [submissions]);
+
   const handleSelectOption = (questionId: string, optionIndex: number) => {
-    if (result) return; // Prevent change after submit
+    if (result) return; // Prevent changes after submission
     setSelectedAnswers(prev => ({
       ...prev,
       [questionId]: optionIndex
@@ -48,11 +63,11 @@ export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProp
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save quiz submission.');
-      }
+      const data = await response.json();
 
-      const data = await response.ok ? await response.json() : {};
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit quiz.');
+      }
       
       if (data.success) {
         setResult(data.submission);
@@ -74,12 +89,6 @@ export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProp
     }
   };
 
-  const handleRetry = () => {
-    setSelectedAnswers({});
-    setResult(null);
-    setError('');
-  };
-
   return (
     <div className="space-y-6">
       
@@ -90,7 +99,9 @@ export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProp
           Interactive Unit Quiz
         </h3>
         <p className="text-sm text-slate-400 font-light leading-relaxed">
-          Read each question carefully. Select the option that best answers the architectural or syntactic problem. You need a score of **60% or higher** to pass this task.
+          {result 
+            ? "You have already completed this quiz. Review your answers below. Correct choices are highlighted in green, incorrect in red."
+            : "Read each question carefully. Select the option that best answers the architectural or syntactic problem. You need a score of 60% or higher to pass this task. Note: You can only attempt this quiz once."}
         </p>
       </div>
 
@@ -104,7 +115,6 @@ export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProp
       {/* Quiz Questions List */}
       <div className="space-y-6">
         {questions.map((q: any, index: number) => {
-          const isAnswered = selectedAnswers[q.id] !== undefined;
           const selectedOption = selectedAnswers[q.id];
           const isCorrect = selectedOption === q.correctOption;
 
@@ -137,15 +147,14 @@ export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProp
                       let optionStyle = 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/30 text-slate-300';
                       
                       if (result) {
-                        // Display answer outcomes
                         if (isSelected && isOptionCorrect) {
-                          optionStyle = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-medium';
+                          optionStyle = 'bg-emerald-500/10 border-emerald-500/35 text-emerald-400 font-medium';
                         } else if (isSelected && !isOptionCorrect) {
-                          optionStyle = 'bg-rose-500/10 border-rose-500/30 text-rose-400';
+                          optionStyle = 'bg-rose-500/10 border-rose-500/35 text-rose-450';
                         } else if (isOptionCorrect) {
                           optionStyle = 'bg-emerald-500/5 border-emerald-500/20 text-emerald-500/80 font-medium';
                         } else {
-                          optionStyle = 'opacity-50 bg-slate-950/40 border-slate-800/80 text-slate-500';
+                          optionStyle = 'opacity-40 bg-slate-950/40 border-slate-800/80 text-slate-500';
                         }
                       } else if (isSelected) {
                         optionStyle = 'bg-indigo-600/10 border-indigo-500 text-indigo-400 font-semibold shadow-md';
@@ -157,11 +166,19 @@ export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProp
                           type="button"
                           onClick={() => handleSelectOption(q.id, optIndex)}
                           disabled={!!result}
-                          className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-all cursor-pointer flex items-center justify-between ${optionStyle}`}
+                          className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-all flex items-center justify-between ${
+                            result ? 'cursor-default' : 'cursor-pointer'
+                          } ${optionStyle}`}
                         >
-                          <span>{option}</span>
-                          {result && isOptionCorrect && (
-                            <CheckCircle className="h-4.5 w-4.5 text-emerald-400 shrink-0 ml-2" />
+                          <span className="flex-1 pr-3">{option}</span>
+                          {result && (
+                            isSelected && isOptionCorrect ? (
+                              <CheckCircle className="h-4.5 w-4.5 text-emerald-400 shrink-0 ml-2" />
+                            ) : isSelected && !isOptionCorrect ? (
+                              <XCircle className="h-4.5 w-4.5 text-rose-400 shrink-0 ml-2" />
+                            ) : isOptionCorrect ? (
+                              <CheckCircle className="h-4.5 w-4.5 text-emerald-500/60 shrink-0 ml-2" />
+                            ) : null
                           )}
                         </button>
                       );
@@ -177,24 +194,15 @@ export default function WorkspaceQuiz({ task, studentId, onSubmitted }: QuizProp
       {/* Action panel */}
       <div className="glass-card p-6 border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
         {result ? (
-          <>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className={`text-lg font-bold ${result.status === 'passed' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {result.status === 'passed' ? 'Passed!' : 'Failed'}
-                </span>
-                <span className="text-sm text-slate-400">Score: {result.score}%</span>
-              </div>
-              <p className="text-xs text-slate-400 font-light">{result.feedback}</p>
+          <div className="space-y-1 w-full">
+            <div className="flex items-center gap-2">
+              <span className={`text-base font-bold uppercase tracking-wider ${result.status === 'passed' ? 'text-emerald-400' : 'text-rose-405'}`}>
+                {result.status === 'passed' ? 'Passed' : 'Failed'}
+              </span>
+              <span className="text-sm font-semibold text-slate-350">Quiz Score: {result.score}%</span>
             </div>
-            <button
-              onClick={handleRetry}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg border border-slate-800 bg-slate-900 text-sm font-semibold text-slate-200 hover:bg-slate-850 hover:text-white transition-all cursor-pointer"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Retake Quiz
-            </button>
-          </>
+            <p className="text-xs text-slate-400 font-light mt-1">Quiz submitted. Re-attempts are restricted for mandatory assessments.</p>
+          </div>
         ) : (
           <>
             <p className="text-xs text-slate-400 font-light max-w-sm">

@@ -44,6 +44,25 @@ export async function POST(req: Request) {
       }
     }
 
+    // Enforce 1-attempt limit for quizzes
+    if (task.type === 'quiz') {
+      const { count, error: countError } = await supabase
+        .from('submissions')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', studentId)
+        .eq('task_id', taskId);
+
+      if (countError) {
+        return NextResponse.json({ error: `Database error checking quiz limits: ${countError.message}` }, { status: 500 });
+      }
+
+      if (count !== null && count >= 1) {
+        return NextResponse.json({ 
+          error: 'Quiz already submitted! You are only permitted to attempt this quiz once.' 
+        }, { status: 400 });
+      }
+    }
+
     // Handle Sandbox Runs (Console Execution only)
     if (isRun) {
       try {

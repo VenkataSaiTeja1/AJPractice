@@ -226,7 +226,7 @@ export default function PracticePage({ params }: PageProps) {
         {/* Workspace Card - Right Panel */}
         <div className="xl:col-span-3">
           {task.type === 'quiz' && (
-            <WorkspaceQuiz task={task} studentId={profile.id} onSubmitted={onTaskSubmitted} />
+            <WorkspaceQuiz task={task} studentId={profile.id} submissions={submissions} onSubmitted={onTaskSubmitted} />
           )}
           {task.type === 'coding' && (
             <WorkspaceCoding task={task} studentId={profile.id} onSubmitted={onTaskSubmitted} />
