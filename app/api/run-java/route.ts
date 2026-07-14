@@ -119,41 +119,82 @@ export async function POST(req: Request) {
 
     } else {
       // METHOD B: Execute via JDoodle API (for serverless environments like Vercel with no JDK)
-      const clientId = process.env.JDOODLE_CLIENT_ID;
-      const clientSecret = process.env.JDOODLE_CLIENT_SECRET;
+      // Loads up to 4 configured JDoodle keys for seamless automatic rotation swapping
+      const jdoodleKeys = [
+        { id: process.env.JDOODLE_CLIENT_ID_1, secret: process.env.JDOODLE_CLIENT_SECRET_1 },
+        { id: process.env.JDOODLE_CLIENT_ID_2, secret: process.env.JDOODLE_CLIENT_SECRET_2 },
+        { id: process.env.JDOODLE_CLIENT_ID_3, secret: process.env.JDOODLE_CLIENT_SECRET_3 },
+        { id: process.env.JDOODLE_CLIENT_ID_4, secret: process.env.JDOODLE_CLIENT_SECRET_4 }
+      ].filter(k => k.id && k.secret);
 
-      if (!clientId || !clientSecret) {
+      if (jdoodleKeys.length === 0) {
         return NextResponse.json({ 
-          error: 'Online compiler setup error: JDoodle environment credentials are missing. Please configure JDOODLE_CLIENT_ID and JDOODLE_CLIENT_SECRET.' 
+          error: 'Online compiler setup error: JDoodle environment credentials are missing. Please configure JDOODLE_CLIENT_ID_1 and JDOODLE_CLIENT_SECRET_1.' 
         }, { status: 500 });
       }
 
-      const response = await fetch('https://api.jdoodle.com/v1/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clientId,
-          clientSecret,
-          script: code,
-          language: 'java',
-          versionIndex: '4', // JDK 17
-          stdin: stdin,
-        }),
-      });
+      let executionSuccess = false;
+      let finalData: any = null;
+      let lastErrorMessage = '';
 
-      if (!response.ok) {
-        const errorMsg = await response.text();
+      for (let i = 0; i < jdoodleKeys.length; i++) {
+        const { id, secret } = jdoodleKeys[i];
+        try {
+          const response = await fetch('https://api.jdoodle.com/v1/execute', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              clientId: id,
+              clientSecret: secret,
+              script: code,
+              language: 'java',
+              versionIndex: '4', // JDK 17
+              stdin: stdin,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            lastErrorMessage = `Credentials Pair ${i + 1} error: ${errorText}`;
+            console.warn(`JDoodle credentials pair ${i + 1} failed with status ${response.status}. Rotating...`);
+            continue;
+          }
+
+          const data = await response.json();
+          const outputText = data.output || '';
+
+          // Look for JDoodle limit indicator keywords
+          if (
+            outputText.includes('Daily limit reached') || 
+            outputText.includes('Credit limit reached') || 
+            outputText.includes('Invalid Client')
+          ) {
+            lastErrorMessage = `Credentials Pair ${i + 1} reached credit limit.`;
+            console.warn(`JDoodle credentials pair ${i + 1} credit exhausted. Rotating...`);
+            continue;
+          }
+
+          // Succeeded! Save data and break loop
+          finalData = data;
+          executionSuccess = true;
+          break;
+
+        } catch (err: any) {
+          lastErrorMessage = `Credentials Pair ${i + 1} connection issue: ${err.message}`;
+          console.warn(`JDoodle credentials pair ${i + 1} threw exception. Rotating...`);
+        }
+      }
+
+      if (!executionSuccess) {
         return NextResponse.json({ 
-          error: `JDoodle API service failed: ${errorMsg}` 
+          error: `JDoodle execution failed. All configured credentials pairs have reached their daily limit (200 executions/day each) or are misconfigured. Details: ${lastErrorMessage}` 
         }, { status: 500 });
       }
 
-      const data = await response.json();
-      
       // Parse output for potential error markers (standard Java compiler output has "error" or "Exception in thread")
-      const outputText = data.output || '';
+      const outputText = finalData.output || '';
       const isError = outputText.toLowerCase().includes('error:') || 
                       outputText.includes('Exception in thread') ||
                       outputText.toLowerCase().includes('compilation error');

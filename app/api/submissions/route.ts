@@ -59,48 +59,75 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Malformed quiz submission: ${err.message}` }, { status: 400 });
       }
     } else if (task.type === 'coding') {
-      // Execute code via Piston API bridge internally
+      // Execute code via dynamic local/cloud Java bridge for all test cases
       try {
-        const pistonResponse = await fetch(`${new URL(req.url).origin}/api/run-java`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ code: submittedContent }),
-        });
-
-        if (!pistonResponse.ok) {
-          const runJavaErr = await pistonResponse.json().catch(() => ({}));
-          throw new Error(runJavaErr.error || 'Piston execution failed');
+        const metadata = task.metadata || {};
+        const testCases = metadata.testCases || [];
+        
+        // Fallback to legacy single expected output if no test cases list exists
+        let casesToRun = testCases;
+        if (casesToRun.length === 0) {
+          casesToRun = [{ input: '', expected: task.expected_output || '' }];
         }
 
-        const runResult = await pistonResponse.json();
-        const runOutput = runResult.run || {};
-        const stdout = runOutput.stdout || '';
-        const stderr = runOutput.stderr || '';
+        let allPassed = true;
+        let gradingFeedback = '';
+        let testCaseIndex = 1;
 
-        if (runOutput.code !== 0 || stderr) {
+        for (const tc of casesToRun) {
+          const runResponse = await fetch(`${new URL(req.url).origin}/api/run-java`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              code: submittedContent,
+              stdin: tc.input || ''
+            }),
+          });
+
+          if (!runResponse.ok) {
+            const runJavaErr = await runResponse.json().catch(() => ({}));
+            throw new Error(`Test case #${testCaseIndex} failed: ${runJavaErr.error || 'Execution failed'}`);
+          }
+
+          const runResult = await runResponse.json();
+          const runOutput = runResult.run || {};
+          const stdout = runOutput.stdout || '';
+          const stderr = runOutput.stderr || '';
+
+          if (runOutput.code !== 0 || stderr) {
+            allPassed = false;
+            gradingFeedback = `Test Case #${testCaseIndex} Compilation/Execution Error:\n${stderr || runOutput.output}`;
+            break;
+          }
+
+          const expected = normalizeString(tc.expected || '');
+          const actual = normalizeString(stdout);
+
+          if (expected !== actual) {
+            allPassed = false;
+            gradingFeedback = `Test Case #${testCaseIndex} Output Mismatch.\n\nInput parameters:\n"${tc.input || '(none)'}"\n\nExpected:\n"${expected}"\n\nActual:\n"${actual}"`;
+            break;
+          }
+
+          testCaseIndex++;
+        }
+
+        if (allPassed) {
+          status = 'passed';
+          score = 100;
+          feedback = `All ${casesToRun.length} test cases passed successfully! Outputs match expectations.`;
+        } else {
           status = 'failed';
           score = 0;
-          feedback = `Compilation/Execution Error:\n${stderr || runOutput.output}`;
-        } else {
-          const expected = normalizeString(task.expected_output || '');
-          const actual = normalizeString(stdout);
-          
-          if (expected === actual) {
-            status = 'passed';
-            score = 100;
-            feedback = 'All test cases passed! Output matches expected output.';
-          } else {
-            status = 'failed';
-            score = 0;
-            feedback = `Output Mismatch.\n\nExpected:\n"${expected}"\n\nActual:\n"${actual}"`;
-          }
+          feedback = gradingFeedback;
         }
+
       } catch (err: any) {
         status = 'failed';
         score = 0;
-        feedback = `Auto-grading failed due to compiler bridge error: ${err.message}`;
+        feedback = `Auto-grading failed due to compiler execution error: ${err.message}`;
       }
     } else if (task.type === 'cloud_lab') {
       // Cloud Labs require manual review by teacher

@@ -48,7 +48,10 @@ export default function StudentDashboard() {
         .order('title', { ascending: true });
 
       if (tasksError) throw tasksError;
-      setTasks(dbTasks || []);
+
+      // Filter tasks by the student's Year of Study (2nd year vs 3rd year)
+      const yearTasks = (dbTasks || []).filter(t => t.year === userProfile.year);
+      setTasks(yearTasks);
 
       // Fetch Submissions for this student
       const { data: dbSubmissions, error: subError } = await supabase
@@ -59,13 +62,15 @@ export default function StudentDashboard() {
       if (subError) throw subError;
       setSubmissions(dbSubmissions || []);
 
-      // Compute statistics
-      if (dbTasks && dbTasks.length > 0) {
-        const total = dbTasks.length;
+      // Compute statistics for the filtered year tasks
+      if (yearTasks.length > 0) {
+        const total = yearTasks.length;
+        const activeTaskIds = yearTasks.map(t => t.id);
+        const filteredSubs = (dbSubmissions || []).filter(s => activeTaskIds.includes(s.task_id));
         
         // Find highest score submission per task
         const bestSubmissions: { [key: string]: any } = {};
-        (dbSubmissions || []).forEach(sub => {
+        filteredSubs.forEach(sub => {
           if (!bestSubmissions[sub.task_id] || sub.status === 'passed') {
             bestSubmissions[sub.task_id] = sub;
           }
@@ -76,6 +81,8 @@ export default function StudentDashboard() {
         const rate = Math.round((completed / total) * 100);
 
         setStats({ total, completed, failed, rate });
+      } else {
+        setStats({ total: 0, completed: 0, failed: 0, rate: 0 });
       }
 
     } catch (err: any) {

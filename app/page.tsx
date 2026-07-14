@@ -81,7 +81,7 @@ export default function Home() {
                 href="/login"
                 className="flex items-center gap-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-850 text-slate-300 px-8 py-3.5 text-base font-semibold transition-all cursor-pointer"
               >
-                Sign In As Teacher
+                Sign In As Faculty
               </Link>
             </>
           )}
@@ -105,7 +105,7 @@ export default function Home() {
             <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 mb-4">
               <Cpu className="h-5 w-5" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Module B: Piston Execution</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">Module B: Sandbox Execution</h3>
             <p className="text-sm text-slate-400 leading-relaxed font-light">
               Live compiler sandbox for coding JDBC statements, batch updates, and Spring beans with zero client setup.
             </p>

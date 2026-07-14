@@ -41,7 +41,7 @@ export default function Navbar() {
             <Link href="/dashboard" className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors">
               <GraduationCap className="h-8 w-8" />
               <span className="font-bold text-lg tracking-tight text-white hidden sm:inline-block">
-                Java<span className="text-indigo-400 font-medium">HybridPortal</span>
+                Practice portal <span className="text-indigo-400 font-medium">By VVS</span>
               </span>
             </Link>
           </div>
@@ -81,7 +81,7 @@ export default function Navbar() {
                   <div className="flex flex-col text-right hidden md:flex">
                     <span className="text-sm font-medium text-white">{profile.full_name}</span>
                     <span className="text-xs text-slate-400">
-                      {profile.role === 'faculty' ? 'Faculty' : `Roll: ${profile.roll_number || 'N/A'}`}
+                      {profile.role === 'faculty' ? 'Faculty' : `Year ${profile.year} | Roll: ${profile.roll_number || 'N/A'}`}
                     </span>
                   </div>
                   <button

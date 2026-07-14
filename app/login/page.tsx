@@ -67,7 +67,7 @@ export default function LoginPage() {
               <GraduationCap className="h-7 w-7" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white">
-              Java Practice Portal
+              Practice Portal By VVS
             </h1>
             <p className="text-sm text-slate-400 mt-1.5">
               Access scheduled curriculum exercises

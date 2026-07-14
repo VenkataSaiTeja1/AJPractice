@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Advanced Java Hybrid Practice Portal",
-  description: "Learn advanced Java topics using live compiler sandboxes, quizzes, and cloud workspaces.",
+  title: "Practice portal By VVS",
+  description: "Learn Java & Advanced Java topics using live compiler sandboxes, quizzes, and cloud workspaces.",
 };
 
 export default function RootLayout({

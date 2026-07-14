@@ -175,6 +175,21 @@ export default function PracticePage({ params }: PageProps) {
             <p className="text-xs text-slate-300 font-light leading-relaxed whitespace-pre-wrap">
               {task.description}
             </p>
+
+            {task.type === 'coding' && task.metadata?.testCases && task.metadata.testCases.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-slate-900 space-y-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Scheduled Test Cases</h4>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {task.metadata.testCases.map((tc: any, idx: number) => (
+                    <div key={idx} className="text-[10px] bg-slate-950/50 p-2 rounded border border-slate-900/60 font-mono space-y-0.5">
+                      <span className="text-indigo-400 font-bold block uppercase text-[8px]">Test Case #{idx + 1}</span>
+                      <div><span className="text-slate-500">Input (stdin):</span> <code className="text-slate-300">{tc.input || '(empty)'}</code></div>
+                      <div><span className="text-slate-500">Expected:</span> <code className="text-emerald-400">{tc.expected}</code></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Submissions Log Card */}
