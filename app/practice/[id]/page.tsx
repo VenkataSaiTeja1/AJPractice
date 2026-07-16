@@ -47,12 +47,13 @@ export default function PracticePage({ params }: PageProps) {
       if (taskError || !dbTask) throw new Error('Task not found');
       setTask(dbTask);
 
-      // Fetch user's submissions for this task
+      // Fetch user's submissions for this task (excluding runs)
       const { data: dbSubs, error: subsError } = await supabase
         .from('submissions')
         .select('*')
         .eq('student_id', userId)
         .eq('task_id', targetId)
+        .eq('is_run', false)
         .order('submitted_at', { ascending: false });
 
       if (subsError) throw subsError;
@@ -82,12 +83,13 @@ export default function PracticePage({ params }: PageProps) {
 
   const onTaskSubmitted = () => {
     if (profile && taskId) {
-      // Re-fetch submissions list to update sidebar records
+      // Re-fetch submissions list to update sidebar records (excluding runs)
       supabase
         .from('submissions')
         .select('*')
         .eq('student_id', profile.id)
         .eq('task_id', taskId)
+        .eq('is_run', false)
         .order('submitted_at', { ascending: false })
         .then(({ data }) => {
           if (data) setSubmissions(data);

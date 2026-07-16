@@ -54,11 +54,12 @@ export default function StudentDashboard() {
       const yearTasks = (dbTasks || []).filter(t => t.year === studentYear);
       setTasks(yearTasks);
 
-      // Fetch Submissions for this student
+      // Fetch Submissions for this student (excluding runs)
       const { data: dbSubmissions, error: subError } = await supabase
         .from('submissions')
         .select('*')
-        .eq('student_id', userProfile.id);
+        .eq('student_id', userProfile.id)
+        .eq('is_run', false);
 
       if (subError) throw subError;
       setSubmissions(dbSubmissions || []);
