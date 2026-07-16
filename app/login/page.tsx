@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginStudent, loginFaculty, getCurrentSession } from '@/lib/supabase';
-import { GraduationCap, Mail, Lock, Hash, ArrowRight } from 'lucide-react';
+import { GraduationCap, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   // Status states
   const [loading, setLoading] = useState(false);
@@ -122,31 +123,25 @@ export default function LoginPage() {
               /* Student: Roll Number input */
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Roll Number</label>
-                <div className="relative">
-                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                  <input
-                    type="text"
-                    required
-                    value={rollNumber}
-                    onChange={(e) => setRollNumber(e.target.value)}
-                    className="w-full glass-input pl-10"
-                  />
-                </div>
+                <input
+                  type="text"
+                  required
+                  value={rollNumber}
+                  onChange={(e) => setRollNumber(e.target.value)}
+                  className="w-full glass-input"
+                />
               </div>
             ) : (
               /* Faculty: Email input */
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Faculty Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full glass-input pl-10"
-                  />
-                </div>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full glass-input"
+                />
               </div>
             )}
 
@@ -154,14 +149,24 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full glass-input pl-10"
+                  className="w-full glass-input pr-10"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 
