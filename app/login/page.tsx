@@ -127,7 +127,6 @@ export default function LoginPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. CS2026101"
                     value={rollNumber}
                     onChange={(e) => setRollNumber(e.target.value)}
                     className="w-full glass-input pl-10"
@@ -143,7 +142,6 @@ export default function LoginPage() {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. professor@university.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full glass-input pl-10"
@@ -160,7 +158,6 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
-                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full glass-input pl-10"
