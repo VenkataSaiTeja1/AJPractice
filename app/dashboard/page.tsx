@@ -355,12 +355,12 @@ export default function StudentDashboard() {
       </div>
 
       {/* TODAY'S MANDATORY SCHEDULED TASKS */}
-      <div className="glass-card p-6 border border-indigo-500/20 relative overflow-hidden shadow-xl bg-indigo-950/5">
+      <div className="glass-card p-6 border border-indigo-200 relative overflow-hidden shadow-md bg-indigo-50/30">
         <div className="absolute top-0 right-0 h-32 w-32 bg-indigo-500/5 blur-3xl rounded-full" />
         
         <div className="flex items-center gap-2 mb-4">
-          <div className="h-2 w-2 rounded-full bg-indigo-400 animate-ping" />
-          <h3 className="text-base font-bold text-white uppercase tracking-wider">Today&apos;s Mandatory Tasks</h3>
+          <div className="h-2 w-2 rounded-full bg-indigo-600 animate-ping" />
+          <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">Today&apos;s Mandatory Tasks</h3>
         </div>
 
         {activeMandatory.length > 0 ? (
@@ -376,8 +376,8 @@ export default function StudentDashboard() {
                   href={`/practice/${task.id}`}
                   className={`p-5 rounded-lg border transition-all flex flex-col justify-between gap-4 cursor-pointer hover:scale-[1.01] ${
                     isPassed 
-                      ? 'border-emerald-500/20 bg-emerald-950/5 hover:border-emerald-500/40' 
-                      : 'border-indigo-500/20 bg-slate-950/65 hover:border-indigo-500/40'
+                      ? 'border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50' 
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
                   }`}
                 >
                   <div className="space-y-1.5">
@@ -385,13 +385,13 @@ export default function StudentDashboard() {
                       {getTaskTypeBadge(task.type)}
                       {getStatusBadge(status)}
                     </div>
-                    <h4 className="text-sm sm:text-base font-bold text-white mt-1 leading-snug">{task.title}</h4>
-                    <p className="text-xs text-slate-400 font-light leading-normal line-clamp-2">{task.description}</p>
+                    <h4 className="text-sm sm:text-base font-bold text-slate-900 mt-1 leading-snug">{task.title}</h4>
+                    <p className="text-xs text-slate-600 font-light leading-normal line-clamp-2">{task.description}</p>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-900 pt-3 mt-1 text-[10px]">
-                    <span className="text-slate-500">Scheduled Until: <strong className="text-indigo-400 font-medium">{endFormatted}</strong></span>
-                    <span className={`font-semibold uppercase tracking-wider ${isPassed ? 'text-emerald-400' : 'text-indigo-400'}`}>
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1 text-[10px]">
+                    <span className="text-slate-500">Scheduled Until: <strong className="text-indigo-600 font-medium">{endFormatted}</strong></span>
+                    <span className={`font-bold uppercase tracking-wider text-xs ${isPassed ? 'text-emerald-600' : 'text-indigo-600'}`}>
                       {isPassed ? 'Completed' : 'Practice Now ➔'}
                     </span>
                   </div>
@@ -402,20 +402,20 @@ export default function StudentDashboard() {
         ) : (
           <div className="text-center py-6 text-slate-500 space-y-1.5 font-light">
             <CheckCircle className="h-8 w-8 text-indigo-500/40 mx-auto" />
-            <p className="text-sm font-semibold text-slate-400">All Scheduled Tasks Cleared</p>
-            <p className="text-xs max-w-sm mx-auto">There are no scheduled mandatory exercises active today. You can select standard topics from the syllabus below.</p>
+            <p className="text-sm font-semibold text-slate-600">All Scheduled Tasks Cleared</p>
+            <p className="text-xs max-w-sm mx-auto text-slate-500">There are no scheduled mandatory exercises active today. You can select standard topics from the syllabus below.</p>
           </div>
         )}
       </div>
 
       {/* SYLLABUS TASKS */}
       <div className="space-y-6">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-indigo-400" /> Syllabus Practice Tasks
+        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-indigo-600" /> Syllabus Practice Tasks
         </h3>
 
-        <div className="glass-card border border-slate-800 overflow-hidden shadow-lg">
-          <div className="divide-y divide-slate-800/80 bg-slate-950/20">
+        <div className="glass-card border border-slate-200 overflow-hidden shadow-md">
+          <div className="divide-y divide-slate-100 bg-white">
             {tasks.length > 0 ? (
               tasks.map((task) => {
                 const status = getTaskStatus(task.id);
@@ -423,16 +423,16 @@ export default function StudentDashboard() {
                   <Link 
                     key={task.id}
                     href={`/practice/${task.id}`}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-900/20 transition-all group gap-4 cursor-pointer"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-50/80 transition-all group gap-4 cursor-pointer"
                   >
                     <div className="space-y-1.5 max-w-2xl">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-white font-semibold text-base group-hover:text-indigo-400 transition-colors">
+                        <span className="text-slate-900 font-semibold text-base group-hover:text-indigo-600 transition-colors">
                           {task.title}
                         </span>
                         {getTaskTypeBadge(task.type)}
                       </div>
-                      <p className="text-xs text-slate-400 font-light leading-relaxed">
+                      <p className="text-xs text-slate-600 font-light leading-relaxed">
                         {task.description}
                       </p>
                     </div>
@@ -442,7 +442,7 @@ export default function StudentDashboard() {
                         {getStatusIcon(status)}
                         {getStatusBadge(status)}
                       </div>
-                      <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                      <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
                     </div>
                   </Link>
                 );

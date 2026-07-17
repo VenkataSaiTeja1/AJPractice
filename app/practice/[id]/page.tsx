@@ -183,10 +183,10 @@ export default function PracticePage({ params }: PageProps) {
                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Scheduled Test Cases</h4>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {task.metadata.testCases.map((tc: any, idx: number) => (
-                    <div key={idx} className="text-[10px] bg-slate-950/50 p-2 rounded border border-slate-900/60 font-mono space-y-0.5">
-                      <span className="text-indigo-400 font-bold block uppercase text-[8px]">Test Case #{idx + 1}</span>
-                      <div><span className="text-slate-500">Input (stdin):</span> <code className="text-slate-300">{tc.input || '(empty)'}</code></div>
-                      <div><span className="text-slate-500">Expected:</span> <code className="text-emerald-400">{tc.expected}</code></div>
+                    <div key={idx} className="text-[10px] bg-slate-50 p-2 rounded border border-slate-200 font-mono space-y-0.5">
+                      <span className="text-indigo-650 font-bold block uppercase text-[8px]">Test Case #{idx + 1}</span>
+                      <div><span className="text-slate-500">Input (stdin):</span> <code className="text-slate-800">{tc.input || '(empty)'}</code></div>
+                      <div><span className="text-slate-500">Expected:</span> <code className="text-emerald-700">{tc.expected}</code></div>
                     </div>
                   ))}
                 </div>
@@ -202,18 +202,18 @@ export default function PracticePage({ params }: PageProps) {
                 {submissions.map((sub) => (
                   <div 
                     key={sub.id} 
-                    className="p-3 bg-slate-950/50 border border-slate-900 rounded-lg flex items-center justify-between text-xs transition-all hover:bg-slate-950"
+                    className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs transition-all hover:bg-slate-100/60"
                   >
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-1.5 font-medium">
                         {getStatusIcon(sub.status)}
-                        <span className="text-white capitalize">{sub.status}</span>
+                        <span className="text-slate-800 font-semibold capitalize">{sub.status}</span>
                       </div>
                       <span className="text-[10px] text-slate-500">
                         {new Date(sub.submitted_at).toLocaleDateString()} at {new Date(sub.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <span className="font-semibold text-slate-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    <span className="font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
                       Score: {sub.score}%
                     </span>
                   </div>

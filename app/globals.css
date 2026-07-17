@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f1f5f9; /* Professional soft slate-gray light mode, not pure white */
+  --background: #e2e8f0; /* Eye-safe soft slate-gray light mode, low glare */
   --foreground: #0f172a; /* Deep slate-900 for high contrast */
   --primary: #4f46e5;    /* Vibrant Indigo-600 */
   --primary-hover: #3730a3; /* Indigo-800 */
@@ -76,27 +76,27 @@ body {
 .bg-slate-900 {
   background-color: #f8fafc !important; /* Card backgrounds/toolbars */
 }
-.bg-slate-950\/80 {
-  background-color: rgba(241, 245, 249, 0.8) !important;
-}
-.bg-slate-955\/80 {
-  background-color: rgba(241, 245, 249, 0.8) !important;
-}
-.bg-slate-950\/60 {
-  background-color: rgba(241, 245, 249, 0.6) !important;
-}
-.bg-slate-950\/40 {
-  background-color: rgba(241, 245, 249, 0.4) !important;
-}
-.bg-slate-950\/20 {
-  background-color: rgba(241, 245, 249, 0.2) !important;
-}
-.bg-slate-900\/40 {
-  background-color: rgba(248, 250, 252, 0.4) !important;
-}
-.bg-slate-900\/20 {
-  background-color: rgba(248, 250, 252, 0.2) !important;
-}
+.bg-slate-950\/95 { background-color: rgba(241, 245, 249, 0.95) !important; }
+.bg-slate-950\/90 { background-color: rgba(241, 245, 249, 0.90) !important; }
+.bg-slate-950\/85 { background-color: rgba(241, 245, 249, 0.85) !important; }
+.bg-slate-950\/80 { background-color: rgba(241, 245, 249, 0.80) !important; }
+.bg-slate-950\/75 { background-color: rgba(241, 245, 249, 0.75) !important; }
+.bg-slate-950\/70 { background-color: rgba(255, 255, 255, 0.80) !important; } /* Navbar */
+.bg-slate-950\/65 { background-color: rgba(255, 255, 255, 0.90) !important; }
+.bg-slate-950\/60 { background-color: rgba(255, 255, 255, 0.90) !important; }
+.bg-slate-950\/50 { background-color: rgba(255, 255, 255, 0.95) !important; }
+.bg-slate-950\/40 { background-color: rgba(255, 255, 255, 0.95) !important; }
+.bg-slate-950\/20 { background-color: rgba(241, 245, 249, 0.20) !important; }
+.bg-slate-950\/10 { background-color: rgba(241, 245, 249, 0.10) !important; }
+.bg-slate-950\/5  { background-color: rgba(241, 245, 249, 0.05) !important; }
+
+.bg-slate-900\/95 { background-color: rgba(248, 250, 252, 0.95) !important; }
+.bg-slate-900\/90 { background-color: rgba(248, 250, 252, 0.90) !important; }
+.bg-slate-900\/80 { background-color: rgba(248, 250, 252, 0.80) !important; }
+.bg-slate-900\/50 { background-color: rgba(248, 250, 252, 0.50) !important; }
+.bg-slate-900\/40 { background-color: rgba(248, 250, 252, 0.40) !important; }
+.bg-slate-900\/20 { background-color: rgba(248, 250, 252, 0.20) !important; }
+.bg-slate-900\/10 { background-color: rgba(248, 250, 252, 0.10) !important; }
 
 .border-slate-800 {
   border-color: #cbd5e1 !important; /* Soft borders */
