@@ -29,16 +29,18 @@ export default function TeacherAdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   
-  // Year filtration
+  // Year & Section filtration
   const [rosterYearFilter, setRosterYearFilter] = useState<'all' | '2' | '3'>('all');
+  const [rosterSectionFilter, setRosterSectionFilter] = useState<'all' | 'A' | 'B'>('all');
   const [monitorYearFilter, setMonitorYearFilter] = useState<'2' | '3'>('3');
+  const [monitorSectionFilter, setMonitorSectionFilter] = useState<'A' | 'B'>('A');
 
   // Progress Monitoring tab states
   const [selectedMonitorTaskId, setSelectedMonitorTaskId] = useState<string>('');
   const [monitorCompleted, setMonitorCompleted] = useState<any[]>([]);
   const [monitorPending, setMonitorPending] = useState<any[]>([]);
   const [monitorUncompleted, setMonitorUncompleted] = useState<any[]>([]);
-  const [monitorStats, setMonitorStats] = useState({ total: 0, completed: 0, uncompleted: 0, rate: 0 });
+  const [monitorStats, setMonitorStats] = useState({ total: 0, completed: 0, attempted: 0, uncompleted: 0, rate: 0 });
 
   // Manual review modal states
   const [selectedSub, setSelectedSub] = useState<any>(null);
@@ -52,6 +54,7 @@ export default function TeacherAdminDashboard() {
   const [studentRoll, setStudentRoll] = useState('');
   const [studentPassword, setStudentPassword] = useState('student123'); // Default temp pass
   const [studentYear, setStudentYear] = useState<number>(3); // 2nd or 3rd year
+  const [studentSection, setStudentSection] = useState<string>('A'); // Section A or B (only for 2nd year)
   const [savingStudent, setSavingStudent] = useState(false);
 
   // Task CRUD Modal states
@@ -65,6 +68,7 @@ export default function TeacherAdminDashboard() {
   const [taskExpected, setTaskExpected] = useState('');
   const [taskCloudUrl, setTaskCloudUrl] = useState('');
   const [taskYear, setTaskYear] = useState<number>(3); // Target year: 2 or 3
+  const [taskSection, setTaskSection] = useState<string>('All'); // Target section: A, B, or All (for 2nd year)
   
   // Timings
   const [taskStartTime, setTaskStartTime] = useState('');
@@ -228,9 +232,16 @@ export default function TeacherAdminDashboard() {
     fetchAdminData();
   }, [router]);
 
-  // Set default monitor task whenever the filter year shifts or tasks change
+  // Set default monitor task whenever the filter year/section shifts or tasks change
   useEffect(() => {
-    const yearTasks = tasks.filter(t => t.year === Number(monitorYearFilter));
+    const yearTasks = tasks.filter(t => {
+      if (t.year !== Number(monitorYearFilter)) return false;
+      if (monitorYearFilter === '2') {
+        return t.section === monitorSectionFilter || t.section === 'All';
+      }
+      return true;
+    });
+
     if (yearTasks.length > 0) {
       const matches = yearTasks.some(t => t.id === selectedMonitorTaskId);
       if (!matches) {
@@ -239,7 +250,7 @@ export default function TeacherAdminDashboard() {
     } else {
       setSelectedMonitorTaskId('');
     }
-  }, [monitorYearFilter, tasks, selectedMonitorTaskId]);
+  }, [monitorYearFilter, monitorSectionFilter, tasks, selectedMonitorTaskId]);
 
   // Compute live progress split for the selected task in the monitor tab
   useEffect(() => {
@@ -247,15 +258,23 @@ export default function TeacherAdminDashboard() {
       setMonitorCompleted([]);
       setMonitorPending([]);
       setMonitorUncompleted([]);
-      setMonitorStats({ total: 0, completed: 0, uncompleted: 0, rate: 0 });
+      setMonitorStats({ total: 0, completed: 0, attempted: 0, uncompleted: 0, rate: 0 });
       return;
     }
 
     const currentTask = tasks.find(t => t.id === selectedMonitorTaskId);
     if (!currentTask) return;
 
-    // Filter students belonging to the target year of this task
-    const targetStudents = students.filter(s => s.year === currentTask.year);
+    // Filter students belonging to the target year and section of this task
+    const targetStudents = students.filter(s => {
+      if (s.year !== currentTask.year) return false;
+      if (currentTask.year === 2) {
+        if (currentTask.section === 'A' || currentTask.section === 'B') {
+          return s.section === currentTask.section;
+        }
+      }
+      return true;
+    });
 
     // Filter submissions for this specific task
     const taskSubs = submissions.filter(s => s.task_id === selectedMonitorTaskId);
@@ -308,17 +327,20 @@ export default function TeacherAdminDashboard() {
     const completedCount = completed.length;
     const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
+    const attemptedCount = completed.length + pending.length + uncompleted.filter(u => u.status === 'failed').length;
+
     setMonitorCompleted(completed);
     setMonitorPending(pending);
     setMonitorUncompleted(uncompleted);
     setMonitorStats({
       total: totalCount,
       completed: completedCount,
+      attempted: attemptedCount,
       uncompleted: totalCount - completedCount,
       rate: completionRate
     });
 
-  }, [selectedMonitorTaskId, students, submissions, tasks]);
+  }, [selectedMonitorTaskId, students, submissions, tasks, monitorSectionFilter, monitorYearFilter]);
 
   // STUDENT CRUD HANDLERS
   const handleOpenStudentModal = (student: any = null) => {
@@ -328,12 +350,14 @@ export default function TeacherAdminDashboard() {
       setStudentRoll(student.roll_number || '');
       setStudentPassword(student.password);
       setStudentYear(student.year || 3);
+      setStudentSection(student.section || 'A');
     } else {
       setEditingStudent(null);
       setStudentName('');
       setStudentRoll('');
       setStudentPassword('student123');
       setStudentYear(3);
+      setStudentSection('A');
     }
     setShowStudentModal(true);
   };
@@ -353,7 +377,8 @@ export default function TeacherAdminDashboard() {
             roll_number: studentRoll.trim(),
             email: generatedEmail,
             password: studentPassword,
-            year: studentYear
+            year: studentYear,
+            section: studentYear === 2 ? studentSection : null
           })
           .eq('id', editingStudent.id);
 
@@ -368,7 +393,8 @@ export default function TeacherAdminDashboard() {
             roll_number: studentRoll.trim(),
             role: 'student',
             first_login: true,
-            year: studentYear
+            year: studentYear,
+            section: studentYear === 2 ? studentSection : null
           });
 
         if (error) throw error;
@@ -414,6 +440,7 @@ export default function TeacherAdminDashboard() {
       setTaskExpected(task.expected_output || '');
       setTaskCloudUrl(task.cloud_ide_url || '');
       setTaskYear(task.year || 3);
+      setTaskSection(task.section || 'All');
       setTaskStartTime(formatIsoToDatetimeLocal(task.start_time || now.toISOString()));
       setTaskEndTime(formatIsoToDatetimeLocal(task.end_time || tomorrow.toISOString()));
       
@@ -434,6 +461,7 @@ export default function TeacherAdminDashboard() {
       setTaskExpected('');
       setTaskCloudUrl('');
       setTaskYear(3);
+      setTaskSection('All');
       setTaskStartTime(formatIsoToDatetimeLocal(now.toISOString()));
       setTaskEndTime(formatIsoToDatetimeLocal(tomorrow.toISOString()));
       setQuizQuestions([
@@ -503,6 +531,7 @@ export default function TeacherAdminDashboard() {
         unit_number: taskUnit,
         type: taskType,
         year: taskYear,
+        section: taskYear === 2 ? taskSection : null,
         start_time: new Date(taskStartTime).toISOString(),
         end_time: new Date(taskEndTime).toISOString()
       };
@@ -621,9 +650,10 @@ export default function TeacherAdminDashboard() {
         const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('student'));
         const yearIdx = headers.findIndex(h => h.includes('year') || h.includes('study'));
         const passIdx = headers.findIndex(h => h.includes('password') || h.includes('pass'));
+        const secIdx = headers.findIndex(h => h.includes('section') || h.includes('sec'));
 
         if (rollIdx === -1 || nameIdx === -1 || yearIdx === -1) {
-          alert('Could not map CSV headers. Please ensure the CSV contains columns: "Roll Number", "Full Name", and "Year of Study". Optional: "Password".');
+          alert('Could not map CSV headers. Please ensure the CSV contains columns: "Roll Number", "Full Name", "Year of Study". Optional: "Password", "Section".');
           return;
         }
 
@@ -639,8 +669,13 @@ export default function TeacherAdminDashboard() {
           const name = row[nameIdx].trim();
           const yearRaw = row[yearIdx].trim();
           const password = passIdx !== -1 ? row[passIdx].trim() : 'student123';
+          const sectionRaw = secIdx !== -1 ? row[secIdx].trim().toUpperCase() : 'A';
 
           const year = parseInt(yearRaw) === 2 ? 2 : 3;
+          let section = null;
+          if (year === 2) {
+            section = (sectionRaw === 'B') ? 'B' : 'A';
+          }
           const generatedEmail = `${roll.toLowerCase()}@portal.com`;
 
           try {
@@ -665,7 +700,8 @@ export default function TeacherAdminDashboard() {
                 roll_number: roll,
                 role: 'student',
                 first_login: true,
-                year
+                year,
+                section
               });
 
             if (insertErr) throw insertErr;
@@ -1200,7 +1236,7 @@ export default function TeacherAdminDashboard() {
           </div>
 
           {/* Year and Task Selection Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className={`grid grid-cols-1 gap-4 ${monitorYearFilter === '2' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Year of Study</label>
               <select
@@ -1215,6 +1251,20 @@ export default function TeacherAdminDashboard() {
               </select>
             </div>
 
+            {monitorYearFilter === '2' && (
+              <div className="space-y-1.5 animate-fadeIn">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Section</label>
+                <select
+                  value={monitorSectionFilter}
+                  onChange={(e) => setMonitorSectionFilter(e.target.value as any)}
+                  className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                >
+                  <option value="A">Section A</option>
+                  <option value="B">Section B</option>
+                </select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected Practice Exercise</label>
               <select
@@ -1222,14 +1272,26 @@ export default function TeacherAdminDashboard() {
                 onChange={(e) => setSelectedMonitorTaskId(e.target.value)}
                 className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
               >
-                {tasks.filter(t => t.year === Number(monitorYearFilter)).length > 0 ? (
-                  tasks.filter(t => t.year === Number(monitorYearFilter)).map(t => (
+                {tasks.filter(t => {
+                  if (t.year !== Number(monitorYearFilter)) return false;
+                  if (monitorYearFilter === '2') {
+                    return t.section === monitorSectionFilter || t.section === 'All';
+                  }
+                  return true;
+                }).length > 0 ? (
+                  tasks.filter(t => {
+                    if (t.year !== Number(monitorYearFilter)) return false;
+                    if (monitorYearFilter === '2') {
+                      return t.section === monitorSectionFilter || t.section === 'All';
+                    }
+                    return true;
+                  }).map(t => (
                     <option key={t.id} value={t.id}>
                       {t.title} ({t.type})
                     </option>
                   ))
                 ) : (
-                  <option value="">No tasks available for Year {monitorYearFilter}</option>
+                  <option value="">No tasks available for Year {monitorYearFilter} Sec {monitorSectionFilter}</option>
                 )}
               </select>
             </div>
@@ -1237,10 +1299,14 @@ export default function TeacherAdminDashboard() {
 
           {/* Task Metrics row */}
           {selectedMonitorTaskId && (
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
               <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg">
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Target Year Students</span>
                 <span className="text-xl font-extrabold text-white">{monitorStats.total}</span>
+              </div>
+              <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg">
+                <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider block">Total Attempted</span>
+                <span className="text-xl font-extrabold text-amber-500">{monitorStats.attempted}</span>
               </div>
               <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg">
                 <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider block">Completed (Passed)</span>
@@ -1355,7 +1421,10 @@ export default function TeacherAdminDashboard() {
               <div className="relative">
                 <select
                   value={rosterYearFilter}
-                  onChange={(e) => setRosterYearFilter(e.target.value as any)}
+                  onChange={(e) => {
+                    setRosterYearFilter(e.target.value as any);
+                    if (e.target.value !== '2') setRosterSectionFilter('all');
+                  }}
                   className="glass-input text-xs py-2 bg-slate-950 text-slate-300 cursor-pointer min-w-[130px]"
                 >
                   <option value="all">All Years</option>
@@ -1363,6 +1432,20 @@ export default function TeacherAdminDashboard() {
                   <option value="3">3rd Year</option>
                 </select>
               </div>
+
+              {rosterYearFilter === '2' && (
+                <div className="relative animate-fadeIn">
+                  <select
+                    value={rosterSectionFilter}
+                    onChange={(e) => setRosterSectionFilter(e.target.value as any)}
+                    className="glass-input text-xs py-2 bg-slate-950 text-slate-300 cursor-pointer min-w-[110px]"
+                  >
+                    <option value="all">All Sections</option>
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                  </select>
+                </div>
+              )}
 
               <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:text-white text-slate-300 font-bold text-xs cursor-pointer shadow transition-all">
                 <Download className="h-4 w-4 rotate-180" /> Import from CSV
@@ -1389,50 +1472,58 @@ export default function TeacherAdminDashboard() {
                 <tr>
                   <th className="px-4 py-3">Roll Number</th>
                   <th className="px-4 py-3">Full Name</th>
-                  <th className="px-4 py-3">Year of Study</th>
+                  <th className="px-4 py-3">Year & Section</th>
                   <th className="px-4 py-3">Active Password</th>
                   <th className="px-4 py-3">First Login Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80 bg-slate-950/20">
-                {students.filter(s => rosterYearFilter === 'all' || String(s.year) === rosterYearFilter).length > 0 ? (
-                  students.filter(s => rosterYearFilter === 'all' || String(s.year) === rosterYearFilter).map(s => (
-                    <tr key={s.id} className="hover:bg-slate-900/10">
-                      <td className="px-4 py-3 font-mono font-semibold text-slate-200">{s.roll_number}</td>
-                      <td className="px-4 py-3 font-semibold text-white">{s.full_name}</td>
-                      <td className="px-4 py-3 font-semibold text-indigo-400">
-                        {s.year === 2 ? '2nd Year (Java)' : '3rd Year (AJ)'}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-slate-400">{s.password}</td>
-                      <td className="px-4 py-3">
-                        {s.first_login ? (
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400 border border-amber-500/20">Must Change</span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400 border border-emerald-500/20">Updated</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right space-x-2">
-                        <button
-                          onClick={() => handleOpenStudentModal(s)}
-                          className="px-2.5 py-1 text-[10.5px] rounded bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-850 cursor-pointer"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStudent(s.id)}
-                          className="px-2.5 py-1 text-[10.5px] rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 cursor-pointer"
-                        >
-                          Delete
-                        </button>
-                      </td>
+                {(() => {
+                  const filtered = students.filter(s => {
+                    const matchYear = rosterYearFilter === 'all' || String(s.year) === rosterYearFilter;
+                    const matchSection = rosterYearFilter !== '2' || rosterSectionFilter === 'all' || s.section === rosterSectionFilter;
+                    return matchYear && matchSection;
+                  });
+
+                  return filtered.length > 0 ? (
+                    filtered.map(s => (
+                      <tr key={s.id} className="hover:bg-slate-900/10">
+                        <td className="px-4 py-3 font-mono font-semibold text-slate-200">{s.roll_number}</td>
+                        <td className="px-4 py-3 font-semibold text-white">{s.full_name}</td>
+                        <td className="px-4 py-3 font-semibold text-indigo-400">
+                          {s.year === 2 ? `2nd Year (Sec ${s.section || 'A'})` : '3rd Year (No Sec)'}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-slate-400">{s.password}</td>
+                        <td className="px-4 py-3">
+                          {s.first_login ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400 border border-amber-500/20">Must Change</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400 border border-emerald-500/20">Updated</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right space-x-2">
+                          <button
+                            onClick={() => handleOpenStudentModal(s)}
+                            className="px-2.5 py-1 text-[10.5px] rounded bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-850 cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStudent(s.id)}
+                            className="px-2.5 py-1 text-[10.5px] rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-500 italic">No student accounts registered for the filtered year/section.</td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500 italic">No student accounts registered for the filtered year.</td>
-                  </tr>
-                )}
+                  );
+                })()}
               </tbody>
             </table>
           </div>
@@ -1460,7 +1551,7 @@ export default function TeacherAdminDashboard() {
                 <tr>
                   <th className="px-4 py-3">Task Group Order</th>
                   <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Target Year</th>
+                  <th className="px-4 py-3">Target Group</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Scheduled Timings (Start - End)</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -1473,7 +1564,7 @@ export default function TeacherAdminDashboard() {
                       <td className="px-4 py-3 font-semibold text-slate-200">Group {t.unit_number}</td>
                       <td className="px-4 py-3 font-semibold text-white">{t.title}</td>
                       <td className="px-4 py-3 font-semibold text-indigo-400">
-                        {t.year === 2 ? '2nd Year (Java)' : '3rd Year (AJ)'}
+                        {t.year === 2 ? `2nd Year (Sec ${t.section || 'All'})` : '3rd Year (AJ)'}
                       </td>
                       <td className="px-4 py-3 capitalize">{t.type.replace('_', ' ')}</td>
                       <td className="px-4 py-3 text-slate-400 font-light text-[11px] leading-relaxed">
@@ -1551,7 +1642,11 @@ export default function TeacherAdminDashboard() {
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Year of Study</label>
                   <select
                     value={studentYear}
-                    onChange={(e) => setStudentYear(Number(e.target.value))}
+                    onChange={(e) => {
+                      const yr = Number(e.target.value);
+                      setStudentYear(yr);
+                      if (yr === 3) setStudentSection('A');
+                    }}
                     className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
                   >
                     <option value={2}>2nd Year (Java)</option>
@@ -1559,6 +1654,33 @@ export default function TeacherAdminDashboard() {
                   </select>
                 </div>
 
+                {studentYear === 2 ? (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Section</label>
+                    <select
+                      value={studentSection}
+                      onChange={(e) => setStudentSection(e.target.value)}
+                      className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                    >
+                      <option value="A">Section A</option>
+                      <option value="B">Section B</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account Password</label>
+                    <input
+                      type="text"
+                      required
+                      value={studentPassword}
+                      onChange={(e) => setStudentPassword(e.target.value)}
+                      className="w-full glass-input text-xs font-mono text-indigo-400"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {studentYear === 2 && (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account Password</label>
                   <input
@@ -1569,7 +1691,7 @@ export default function TeacherAdminDashboard() {
                     className="w-full glass-input text-xs font-mono text-indigo-400"
                   />
                 </div>
-              </div>
+              )}
               {!editingStudent && (
                 <span className="text-[9px] text-slate-500 leading-none block">Default temp password. Enforces password change on login.</span>
               )}
@@ -1605,8 +1727,8 @@ export default function TeacherAdminDashboard() {
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5 md:col-span-2">
+              <div className={`grid grid-cols-1 gap-4 ${taskYear === 2 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+                <div className={`space-y-1.5 ${taskYear === 2 ? 'md:col-span-2' : 'md:col-span-2'}`}>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Exercise Title</label>
                   <input
                     type="text"
@@ -1622,13 +1744,32 @@ export default function TeacherAdminDashboard() {
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Student Year</label>
                   <select
                     value={taskYear}
-                    onChange={(e) => setTaskYear(Number(e.target.value))}
+                    onChange={(e) => {
+                      const yr = Number(e.target.value);
+                      setTaskYear(yr);
+                      if (yr === 3) setTaskSection('All');
+                    }}
                     className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
                   >
                     <option value={2}>2nd Year (Java)</option>
                     <option value={3}>3rd Year (Advanced Java)</option>
                   </select>
                 </div>
+
+                {taskYear === 2 && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Section</label>
+                    <select
+                      value={taskSection}
+                      onChange={(e) => setTaskSection(e.target.value)}
+                      className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                    >
+                      <option value="All">All Sections (A & B)</option>
+                      <option value="A">Section A Only</option>
+                      <option value="B">Section B Only</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

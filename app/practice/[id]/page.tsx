@@ -33,7 +33,7 @@ export default function PracticePage({ params }: PageProps) {
     params.then(p => setTaskId(p.id));
   }, [params]);
 
-  const fetchTaskAndSubmissions = async (userId: string, targetId: string) => {
+  const fetchTaskAndSubmissions = async (userProfile: any, targetId: string) => {
     try {
       setLoading(true);
 
@@ -45,13 +45,26 @@ export default function PracticePage({ params }: PageProps) {
         .single();
 
       if (taskError || !dbTask) throw new Error('Task not found');
+
+      // Enforce year and section security boundaries
+      const studentYear = userProfile.year || 3;
+      if (dbTask.year !== studentYear) {
+        throw new Error('Access denied: target student year mismatch.');
+      }
+      if (studentYear === 2) {
+        const studentSection = userProfile.section || 'A';
+        if (dbTask.section && dbTask.section !== 'All' && dbTask.section !== studentSection) {
+          throw new Error('Access denied: target student section mismatch.');
+        }
+      }
+
       setTask(dbTask);
 
       // Fetch user's submissions for this task (excluding runs)
       const { data: dbSubs, error: subsError } = await supabase
         .from('submissions')
         .select('*')
-        .eq('student_id', userId)
+        .eq('student_id', userProfile.id)
         .eq('task_id', targetId)
         .eq('is_run', false)
         .order('submitted_at', { ascending: false });
@@ -78,7 +91,7 @@ export default function PracticePage({ params }: PageProps) {
     }
 
     setProfile(session);
-    fetchTaskAndSubmissions(session.id, taskId);
+    fetchTaskAndSubmissions(session, taskId);
   }, [taskId, router]);
 
   const onTaskSubmitted = () => {

@@ -49,9 +49,16 @@ export default function StudentDashboard() {
 
       if (tasksError) throw tasksError;
 
-      // Filter tasks by the student's Year of Study (defaulting to 3rd year if null)
+      // Filter tasks by the student's Year of Study and Section (if 2nd Year)
       const studentYear = userProfile.year || 3;
-      const yearTasks = (dbTasks || []).filter(t => t.year === studentYear);
+      const yearTasks = (dbTasks || []).filter(t => {
+        if (t.year !== studentYear) return false;
+        if (studentYear === 2) {
+          const studentSection = userProfile.section || 'A';
+          return t.section === studentSection || t.section === 'All' || !t.section;
+        }
+        return true;
+      });
       setTasks(yearTasks);
 
       // Fetch Submissions for this student (excluding runs)
