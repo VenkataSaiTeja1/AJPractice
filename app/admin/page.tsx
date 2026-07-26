@@ -99,6 +99,54 @@ export default function TeacherAdminDashboard() {
 
   const [unitBottlenecks, setUnitBottlenecks] = useState<any[]>([]);
 
+  // Compute incorrect selections and answers metrics for each quiz question
+  const quizAnalytics = React.useMemo(() => {
+    if (!selectedMonitorTaskId) return null;
+    const currentTask = tasks.find(t => t.id === selectedMonitorTaskId);
+    if (!currentTask || currentTask.type !== 'quiz') return null;
+
+    const questions = currentTask.metadata?.questions || [];
+    const taskSubs = submissions.filter(s => s.task_id === selectedMonitorTaskId);
+
+    // Parse submitted_content for each submission
+    const parsedSubmissions = taskSubs.map(sub => {
+      try {
+        return JSON.parse(sub.submitted_content || '{}');
+      } catch (e) {
+        return {};
+      }
+    });
+
+    return questions.map((q: any) => {
+      const optionCounts = [0, 0, 0, 0];
+      let totalAnswers = 0;
+
+      parsedSubmissions.forEach(answers => {
+        const selected = answers[q.id];
+        if (selected !== undefined && selected >= 0 && selected < 4) {
+          optionCounts[selected]++;
+          totalAnswers++;
+        }
+      });
+
+      const correctCount = optionCounts[q.correctOption] || 0;
+      const incorrectCount = totalAnswers - correctCount;
+      const correctPercent = totalAnswers > 0 ? Math.round((correctCount / totalAnswers) * 100) : 0;
+
+      return {
+        questionId: q.id,
+        questionText: q.question,
+        options: q.options || [],
+        correctOption: q.correctOption,
+        optionCounts,
+        totalAnswers,
+        correctCount,
+        incorrectCount,
+        correctPercent
+      };
+    });
+  }, [selectedMonitorTaskId, tasks, submissions]);
+
   // Helper to format ISO to datetime-local value (YYYY-MM-DDTHH:MM)
   const formatIsoToDatetimeLocal = (isoString: string) => {
     if (!isoString) return '';
@@ -1319,6 +1367,79 @@ export default function TeacherAdminDashboard() {
               <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg">
                 <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider block font-semibold">Completion Rate</span>
                 <span className="text-xl font-extrabold text-indigo-400">{monitorStats.rate}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Quiz Question Analytics Graph */}
+          {quizAnalytics && quizAnalytics.length > 0 && (
+            <div className="glass-card p-6 border border-slate-800 space-y-6">
+              <div>
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <BarChart2 className="h-4.5 w-4.5 text-indigo-400" />
+                  Concept Mastery & Quiz Question Analytics
+                </h4>
+                <p className="text-xs text-slate-400 font-light mt-0.5">
+                  Incorrect option selection frequency per question to identify conceptual bottlenecks.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {quizAnalytics.map((q: any, idx: number) => (
+                  <div key={q.questionId} className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-5 space-y-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center rounded bg-indigo-500/10 px-2 py-0.5 text-[9px] font-bold text-indigo-400 border border-indigo-500/20">
+                          Question {idx + 1}
+                        </span>
+                        <h5 className="text-xs font-semibold text-slate-100 leading-relaxed mt-1.5">{q.questionText}</h5>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`inline-flex items-center gap-1 rounded px-2.5 py-0.5 text-[10px] font-bold border ${
+                          q.correctPercent >= 60 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                          Mastery: {q.correctPercent}%
+                        </span>
+                        <p className="text-[9px] text-slate-500 mt-1">Ans: {q.correctCount}/{q.totalAnswers}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      {q.options.map((option: string, optIdx: number) => {
+                        const isCorrect = q.correctOption === optIdx;
+                        const count = q.optionCounts[optIdx] || 0;
+                        const percent = q.totalAnswers > 0 ? Math.round((count / q.totalAnswers) * 100) : 0;
+                        
+                        return (
+                          <div key={optIdx} className="space-y-1 text-xs">
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className={`font-medium leading-tight max-w-[80%] ${isCorrect ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                {String.fromCharCode(65 + optIdx)}. {option}
+                                {isCorrect && <span className="text-[9px] font-bold text-emerald-500/80 bg-emerald-500/10 border border-emerald-500/20 rounded px-1 ml-1.5 py-px">Correct</span>}
+                              </span>
+                              <span className="font-mono text-slate-400 shrink-0">{count} ({percent}%)</span>
+                            </div>
+                            
+                            <div className="h-2 w-full bg-slate-900 border border-slate-800 rounded overflow-hidden">
+                              <div 
+                                className={`h-full transition-all duration-500 ${
+                                  isCorrect 
+                                    ? 'bg-emerald-500' 
+                                    : count > 0 
+                                      ? 'bg-rose-500/80' 
+                                      : 'bg-slate-700/30'
+                                }`} 
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
