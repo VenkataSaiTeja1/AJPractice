@@ -22,8 +22,14 @@ RUN npm ci
 # Copy application source files
 COPY . .
 
+# Set default production environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+
+# Provide build-time fallback placeholders for Supabase keys to prevent Next.js compilation crashes.
+# These will be overwritten by the actual environment variables you configured in your Render dashboard at runtime.
+ENV NEXT_PUBLIC_SUPABASE_URL=https://oackmxxdeelyqrfxwvie.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZOlaYAlh9OpUAARLnbwwTQ_RglUR47v
 
 # Build Next.js project
 RUN npm run build
