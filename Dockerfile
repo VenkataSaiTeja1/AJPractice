@@ -34,7 +34,9 @@ ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZOlaYAlh9OpUAARLnbwwTQ_R
 # Build Next.js project
 RUN npm run build
 
+# Expose port
 EXPOSE 3000
 
-# Start server
-CMD ["npm", "run", "start"]
+# Start server.
+# Using the shell format allows the PORT variable (which Render sets to 10000 or similar) to expand correctly.
+CMD npx next start -p ${PORT:-3000}
