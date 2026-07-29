@@ -38,11 +38,15 @@ export async function POST(req: Request) {
 
       // Compile code
       const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
-        exec('javac Main.java', { cwd: executionDir, timeout: 5000 }, (error, stdout, stderr) => {
+        exec('javac Main.java', { cwd: executionDir, timeout: 15000 }, (error, stdout, stderr) => {
           if (error) {
+            const isTimeout = error.killed || error.signal === 'SIGTERM';
+            const errorMsg = isTimeout 
+              ? 'Compilation timed out! The server was too slow to build the Java code. Please try again.' 
+              : (stderr || error.message || 'Compilation failed.');
             resolve({ 
               code: error.code || 1, 
-              stderr: stderr || error.message || 'Compilation failed.' 
+              stderr: errorMsg
             });
           } else {
             resolve({ code: 0, stderr: '' });
@@ -82,15 +86,17 @@ export async function POST(req: Request) {
           child.stdin.end();
         }
 
+        let timedOut = false;
         const timeoutId = setTimeout(() => {
+          timedOut = true;
           child.kill('SIGKILL');
-        }, 6000);
+        }, 15000);
 
         child.on('close', (exitCode) => {
           clearTimeout(timeoutId);
           resolve({
             stdout: stdoutData,
-            stderr: stderrData,
+            stderr: timedOut ? 'Execution timed out! The Java program took longer than 15 seconds to run.' : stderrData,
             code: exitCode
           });
         });
