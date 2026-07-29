@@ -76,11 +76,6 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   };
 
   const handleRunCode = async () => {
-    if (executionCount >= 7) {
-      setErrorMessage('Execution limit reached! You are allowed a maximum of 7 executions per coding exercise.');
-      return;
-    }
-
     setRunning(true);
     setConsoleOutput('');
     setConsoleError('');
@@ -125,11 +120,6 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   };
 
   const handleSubmitCode = async () => {
-    if (executionCount >= 7) {
-      setErrorMessage('Execution limit reached! You are allowed a maximum of 7 executions per coding exercise.');
-      return;
-    }
-
     setSubmitting(true);
     setErrorMessage('');
     setGradeResult(null);
@@ -175,7 +165,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
     }
   };
 
-  const limitReached = executionCount >= 7;
+  const limitReached = false;
 
   return (
     <div className={isMaximized 
@@ -225,8 +215,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
             {/* Execution Counter */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10.5px] font-mono font-medium">
               <span className="text-slate-500">Attempts:</span>
-              <span className={limitReached ? 'text-rose-400 font-bold' : executionCount >= 5 ? 'text-amber-400' : 'text-indigo-400'}>
-                {executionCount} / 7
+              <span className="text-indigo-400">
+                {executionCount}
               </span>
             </div>
 

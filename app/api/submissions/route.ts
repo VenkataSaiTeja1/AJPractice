@@ -27,26 +27,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    // 2. Enforce 7-execution limit (runs + submissions) for coding tasks
-    if (task.type === 'coding') {
-      const { count, error: countError } = await supabase
-        .from('submissions')
-        .select('*', { count: 'exact', head: true })
-        .eq('student_id', studentId)
-        .eq('task_id', taskId);
-
-      if (countError) {
-        return NextResponse.json({ error: `Database error checking execution limits: ${countError.message}` }, { status: 500 });
-      }
-
-      if (count !== null && count >= 7) {
-        return NextResponse.json({ 
-          error: 'Execution limit reached! You are only allowed 7 executions (including both runs and submissions) per task.' 
-        }, { status: 400 });
-      }
-    }
-
-    // Enforce 1-attempt limit for quizzes
+    // 2. Enforce 1-attempt limit for quizzes
     if (task.type === 'quiz') {
       const { count, error: countError } = await supabase
         .from('submissions')
