@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exec, spawn } from 'child_process';
+
+export const dynamic = 'force-dynamic';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';

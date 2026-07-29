@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to normalize strings for comparison
 function normalizeString(str: string): string {
   return str.replace(/\r\n/g, '\n').trim();
