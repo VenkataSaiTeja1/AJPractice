@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
       // Compile code
       const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
-        exec('javac -J-Xmx128m Main.java', { cwd: executionDir, timeout: 5000 }, (error, stdout, stderr) => {
+        exec('javac Main.java', { cwd: executionDir, timeout: 5000 }, (error, stdout, stderr) => {
           if (error) {
             resolve({ 
               code: error.code || 1, 
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
       // Execute code
       const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
-        const child = spawn('java', ['-Xmx128m', 'Main'], { cwd: executionDir });
+        const child = spawn('java', ['Main'], { cwd: executionDir });
 
         let stdoutData = '';
         let stderrData = '';
