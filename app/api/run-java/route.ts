@@ -20,6 +20,15 @@ export async function POST(req: Request) {
   try {
     const { code, stdin = '' } = await req.json();
 
+    if (code === 'DEBUG_ENV') {
+      const debugOutput = await new Promise<string>((resolve) => {
+        exec('which javac && javac -version && java -version && free -m', (error, stdout, stderr) => {
+          resolve(`stdout: ${stdout}\nstderr: ${stderr}\nerror: ${error ? error.message : 'none'}`);
+        });
+      });
+      return NextResponse.json({ debugOutput });
+    }
+
     if (!code) {
       return NextResponse.json({ error: 'Code content is required' }, { status: 400 });
     }
