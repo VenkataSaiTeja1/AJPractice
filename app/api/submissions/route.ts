@@ -68,7 +68,11 @@ export async function POST(req: Request) {
     // Handle Sandbox Runs (Console Execution only)
     if (isRun) {
       try {
-        const runResponse = await fetch(`${new URL(req.url).origin}/api/run-java`, {
+        const compilerUrl = process.env.COMPILER_SERVICE_URL 
+          ? `${process.env.COMPILER_SERVICE_URL.replace(/\/$/, '')}/api/run-java`
+          : `${new URL(req.url).origin}/api/run-java`;
+
+        const runResponse = await fetch(compilerUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -160,8 +164,12 @@ export async function POST(req: Request) {
         let gradingFeedback = '';
         let testCaseIndex = 1;
 
+        const compilerUrl = process.env.COMPILER_SERVICE_URL 
+          ? `${process.env.COMPILER_SERVICE_URL.replace(/\/$/, '')}/api/run-java`
+          : `${new URL(req.url).origin}/api/run-java`;
+
         for (const tc of casesToRun) {
-          const runResponse = await fetch(`${new URL(req.url).origin}/api/run-java`, {
+          const runResponse = await fetch(compilerUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
