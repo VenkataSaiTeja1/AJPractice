@@ -24,6 +24,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Code content is required' }, { status: 400 });
     }
 
+    console.log(`[Java Runner] Received compile & run request (stdin len: ${stdin.length})`);
+
     // Check if Java compiler (javac) is installed locally on the hosting environment (VPS/Local PC)
     const localJavaAvailable = await isCommandAvailable('javac');
 
@@ -37,6 +39,7 @@ export async function POST(req: Request) {
       fs.writeFileSync(sourceFilePath, code);
 
       // Compile code
+      console.log(`[Java Runner] Compiling Main.java locally...`);
       const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
         exec('javac Main.java', { cwd: executionDir, timeout: 15000 }, (error, stdout, stderr) => {
           if (error) {
@@ -44,11 +47,13 @@ export async function POST(req: Request) {
             const errorMsg = isTimeout 
               ? 'Compilation timed out! The server was too slow to build the Java code. Please try again.' 
               : (stderr || error.message || 'Compilation failed.');
+            console.warn(`[Java Runner] Compilation failed. Code: ${error.code || 1}`);
             resolve({ 
               code: error.code || 1, 
               stderr: errorMsg
             });
           } else {
+            console.log(`[Java Runner] Compilation succeeded.`);
             resolve({ code: 0, stderr: '' });
           }
         });
@@ -70,6 +75,7 @@ export async function POST(req: Request) {
       }
 
       // Execute code
+      console.log(`[Java Runner] Spawning java Main process...`);
       const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
         const child = spawn('java', ['Main'], { cwd: executionDir });
 
@@ -89,11 +95,13 @@ export async function POST(req: Request) {
         let timedOut = false;
         const timeoutId = setTimeout(() => {
           timedOut = true;
+          console.warn(`[Java Runner] Execution timed out after 15s. Killing process.`);
           child.kill('SIGKILL');
         }, 15000);
 
         child.on('close', (exitCode) => {
           clearTimeout(timeoutId);
+          console.log(`[Java Runner] Execution finished with exit code: ${exitCode}`);
           resolve({
             stdout: stdoutData,
             stderr: timedOut ? 'Execution timed out! The Java program took longer than 15 seconds to run.' : stderrData,
