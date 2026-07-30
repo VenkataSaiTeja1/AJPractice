@@ -2098,6 +2098,7 @@ export default function TeacherAdminDashboard() {
                             onChange={(e) => handleTestCaseChange(tcIdx, 'expected', e.target.value)}
                             className="w-full glass-input text-[11px] py-1.5 font-mono text-emerald-400"
                           />
+                        </div>
                         <div className="md:col-span-2 flex items-center gap-2 pt-1 border-t border-slate-900/40">
                           <input
                             type="checkbox"
