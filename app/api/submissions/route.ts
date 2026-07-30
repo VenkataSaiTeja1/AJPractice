@@ -135,21 +135,16 @@ export async function POST(req: Request) {
         const metadata = task.metadata || {};
         const testCases = metadata.testCases || [];
         
-        // Fallback to legacy single expected output if no test cases list exists
-        let casesToRun = testCases;
-        if (casesToRun.length === 0) {
-          casesToRun = [{ input: '', expected: task.expected_output || '' }];
-        }
-
-        let allPassed = true;
-        let gradingFeedback = '';
-        let testCaseIndex = 1;
-
         const compilerUrl = process.env.COMPILER_SERVICE_URL 
           ? `${process.env.COMPILER_SERVICE_URL.replace(/\/$/, '')}/api/run-java`
           : `${new URL(req.url).origin}/api/run-java`;
 
-        for (const tc of casesToRun) {
+        let allPassed = true;
+        let gradingFeedback = '';
+
+        if (testCases.length === 0 && !task.expected_output) {
+          // Play-ground / Sandbox mode: No test cases configured. 
+          // Just compile and run once to verify compilation/execution status
           const runResponse = await fetch(compilerUrl, {
             method: 'POST',
             headers: {
@@ -157,50 +152,87 @@ export async function POST(req: Request) {
             },
             body: JSON.stringify({ 
               code: submittedContent,
-              stdin: tc.input || ''
+              stdin: stdin || ''
             }),
           });
 
           if (!runResponse.ok) {
             const runJavaErr = await runResponse.json().catch(() => ({}));
-            throw new Error(`Test case #${testCaseIndex} failed: ${runJavaErr.error || 'Execution failed'}`);
+            throw new Error(`Execution failed: ${runJavaErr.error || 'Compiler API error'}`);
           }
 
           const runResult = await runResponse.json();
           const runOutput = runResult.run || {};
-          const stdout = runOutput.stdout || '';
           const stderr = runOutput.stderr || '';
 
           if (runOutput.code !== 0 || stderr) {
             allPassed = false;
-            if (tc.isHidden) {
-              gradingFeedback = `Hidden Test Case #${testCaseIndex} Execution Error: The program crashed during execution.`;
-            } else {
-              gradingFeedback = `Test Case #${testCaseIndex} Compilation/Execution Error:\n${stderr || runOutput.output}`;
-            }
-            break;
+            gradingFeedback = `Compilation/Execution Error:\n${stderr || runOutput.output}`;
+          } else {
+            allPassed = true;
+            gradingFeedback = `Program compiled and executed successfully! (No test cases configured for this task)`;
+          }
+        } else {
+          // Traditional Test Cases / Expected Output grading mode
+          let casesToRun = testCases;
+          if (casesToRun.length === 0) {
+            casesToRun = [{ input: '', expected: task.expected_output || '' }];
           }
 
-          const expected = normalizeString(tc.expected || '');
-          const actual = normalizeString(stdout);
+          let testCaseIndex = 1;
+          for (const tc of casesToRun) {
+            const runResponse = await fetch(compilerUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                code: submittedContent,
+                stdin: tc.input || ''
+              }),
+            });
 
-          if (expected !== actual) {
-            allPassed = false;
-            if (tc.isHidden) {
-              gradingFeedback = `Hidden Test Case #${testCaseIndex} Output Mismatch: The program output did not match expectations.`;
-            } else {
-              gradingFeedback = `Test Case #${testCaseIndex} Output Mismatch.\n\nInput parameters:\n"${tc.input || '(none)'}"\n\nExpected:\n"${expected}"\n\nActual:\n"${actual}"`;
+            if (!runResponse.ok) {
+              const runJavaErr = await runResponse.json().catch(() => ({}));
+              throw new Error(`Test case #${testCaseIndex} failed: ${runJavaErr.error || 'Execution failed'}`);
             }
-            break;
-          }
 
-          testCaseIndex++;
+            const runResult = await runResponse.json();
+            const runOutput = runResult.run || {};
+            const stdout = runOutput.stdout || '';
+            const stderr = runOutput.stderr || '';
+
+            if (runOutput.code !== 0 || stderr) {
+              allPassed = false;
+              if (tc.isHidden) {
+                gradingFeedback = `Hidden Test Case #${testCaseIndex} Execution Error: The program crashed during execution.`;
+              } else {
+                gradingFeedback = `Test Case #${testCaseIndex} Compilation/Execution Error:\n${stderr || runOutput.output}`;
+              }
+              break;
+            }
+
+            const expected = normalizeString(tc.expected || '');
+            const actual = normalizeString(stdout);
+
+            if (expected !== actual) {
+              allPassed = false;
+              if (tc.isHidden) {
+                gradingFeedback = `Hidden Test Case #${testCaseIndex} Output Mismatch: The program output did not match expectations.`;
+              } else {
+                gradingFeedback = `Test Case #${testCaseIndex} Output Mismatch.\n\nInput parameters:\n"${tc.input || '(none)'}"\n\nExpected:\n"${expected}"\n\nActual:\n"${actual}"`;
+              }
+              break;
+            }
+
+            testCaseIndex++;
+          }
         }
 
         if (allPassed) {
           status = 'passed';
           score = 100;
-          feedback = `All ${casesToRun.length} test cases passed successfully! Outputs match expectations.`;
+          feedback = gradingFeedback || 'All checks passed successfully!';
         } else {
           status = 'failed';
           score = 0;

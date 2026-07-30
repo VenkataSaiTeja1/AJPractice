@@ -410,55 +410,9 @@ export default function StudentDashboard() {
           <div className="text-center py-6 text-slate-500 space-y-1.5 font-light">
             <CheckCircle className="h-8 w-8 text-indigo-500/40 mx-auto" />
             <p className="text-sm font-semibold text-slate-600">All Scheduled Tasks Cleared</p>
-            <p className="text-xs max-w-sm mx-auto text-slate-500">There are no scheduled mandatory exercises active today. You can select standard topics from the syllabus below.</p>
+            <p className="text-xs max-w-sm mx-auto text-slate-500">There are no scheduled mandatory exercises active at the moment. Please check back later when your faculty schedules a task.</p>
           </div>
         )}
-      </div>
-
-      {/* SYLLABUS TASKS */}
-      <div className="space-y-6">
-        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-indigo-600" /> Syllabus Practice Tasks
-        </h3>
-
-        <div className="glass-card border border-slate-200 overflow-hidden shadow-md">
-          <div className="divide-y divide-slate-100 bg-white">
-            {tasks.length > 0 ? (
-              tasks.map((task) => {
-                const status = getTaskStatus(task.id);
-                return (
-                  <Link 
-                    key={task.id}
-                    href={`/practice/${task.id}`}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-50/80 transition-all group gap-4 cursor-pointer"
-                  >
-                    <div className="space-y-1.5 max-w-2xl">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-slate-900 font-semibold text-base group-hover:text-indigo-600 transition-colors">
-                          {task.title}
-                        </span>
-                        {getTaskTypeBadge(task.type)}
-                      </div>
-                      <p className="text-xs text-slate-600 font-light leading-relaxed">
-                        {task.description}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-4 justify-between sm:justify-end">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(status)}
-                        {getStatusBadge(status)}
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
-                    </div>
-                  </Link>
-                );
-              })
-            ) : (
-              <div className="p-8 text-center text-slate-500 italic">No practice tasks assigned yet.</div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

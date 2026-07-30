@@ -2065,17 +2065,21 @@ export default function TeacherAdminDashboard() {
                       </button>
                     </div>
 
+                    {codingTestCases.length === 0 && (
+                      <div className="text-center py-6 text-slate-500 italic text-[11px]">
+                        No test cases configured. This exercise will be treated as open-ended practice (compilation/execution verification only).
+                      </div>
+                    )}
+
                     {codingTestCases.map((tc, tcIdx) => (
                       <div key={tcIdx} className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/40 p-3 rounded border border-slate-900/60 relative">
-                        {codingTestCases.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeTestCase(tcIdx)}
-                            className="absolute top-2 right-2 text-slate-600 hover:text-rose-400 cursor-pointer"
-                          >
-                            <Trash className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeTestCase(tcIdx)}
+                          className="absolute top-2 right-2 text-slate-650 hover:text-rose-400 cursor-pointer"
+                        >
+                          <Trash className="h-3.5 w-3.5" />
+                        </button>
                         
                         <div className="space-y-1.5">
                           <label className="text-[9px] font-semibold uppercase text-slate-500">Test Input (stdin) #{tcIdx + 1}</label>
