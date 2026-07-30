@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       // Compile code
       console.log(`[Java Runner] Compiling Main.java locally...`);
       const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
-        exec('javac Main.java', { cwd: executionDir, timeout: 15000 }, (error, stdout, stderr) => {
+        exec('javac -J-XX:+TieredCompilation -J-XX:TieredStopAtLevel=1 Main.java', { cwd: executionDir, timeout: 15000 }, (error, stdout, stderr) => {
           if (error) {
             const isTimeout = error.killed || error.signal === 'SIGTERM';
             const errorMsg = isTimeout 
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       // Execute code
       console.log(`[Java Runner] Spawning java Main process...`);
       const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
-        const child = spawn('java', ['Main'], { cwd: executionDir });
+        const child = spawn('java', ['-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: executionDir });
 
         let stdoutData = '';
         let stderrData = '';
