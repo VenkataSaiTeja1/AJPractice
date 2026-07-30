@@ -173,7 +173,11 @@ export async function POST(req: Request) {
 
           if (runOutput.code !== 0 || stderr) {
             allPassed = false;
-            gradingFeedback = `Test Case #${testCaseIndex} Compilation/Execution Error:\n${stderr || runOutput.output}`;
+            if (tc.isHidden) {
+              gradingFeedback = `Hidden Test Case #${testCaseIndex} Execution Error: The program crashed during execution.`;
+            } else {
+              gradingFeedback = `Test Case #${testCaseIndex} Compilation/Execution Error:\n${stderr || runOutput.output}`;
+            }
             break;
           }
 
@@ -182,7 +186,11 @@ export async function POST(req: Request) {
 
           if (expected !== actual) {
             allPassed = false;
-            gradingFeedback = `Test Case #${testCaseIndex} Output Mismatch.\n\nInput parameters:\n"${tc.input || '(none)'}"\n\nExpected:\n"${expected}"\n\nActual:\n"${actual}"`;
+            if (tc.isHidden) {
+              gradingFeedback = `Hidden Test Case #${testCaseIndex} Output Mismatch: The program output did not match expectations.`;
+            } else {
+              gradingFeedback = `Test Case #${testCaseIndex} Output Mismatch.\n\nInput parameters:\n"${tc.input || '(none)'}"\n\nExpected:\n"${expected}"\n\nActual:\n"${actual}"`;
+            }
             break;
           }
 

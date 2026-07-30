@@ -81,7 +81,7 @@ export default function TeacherAdminDashboard() {
   
   // Multiple test cases manager
   const [codingTestCases, setCodingTestCases] = useState<any[]>([
-    { input: '', expected: '' }
+    { input: '', expected: '', isHidden: false }
   ]);
 
   const [savingTask, setSavingTask] = useState(false);
@@ -552,7 +552,7 @@ export default function TeacherAdminDashboard() {
   };
 
   // MULTIPLE TEST CASES HANDLERS
-  const handleTestCaseChange = (index: number, field: 'input' | 'expected', value: string) => {
+  const handleTestCaseChange = (index: number, field: 'input' | 'expected' | 'isHidden', value: any) => {
     setCodingTestCases(prev => {
       const copy = [...prev];
       copy[index] = { ...copy[index], [field]: value };
@@ -561,7 +561,7 @@ export default function TeacherAdminDashboard() {
   };
 
   const addTestCase = () => {
-    setCodingTestCases(prev => [...prev, { input: '', expected: '' }]);
+    setCodingTestCases(prev => [...prev, { input: '', expected: '', isHidden: false }]);
   };
 
   const removeTestCase = (index: number) => {
@@ -2098,6 +2098,17 @@ export default function TeacherAdminDashboard() {
                             onChange={(e) => handleTestCaseChange(tcIdx, 'expected', e.target.value)}
                             className="w-full glass-input text-[11px] py-1.5 font-mono text-emerald-400"
                           />
+                        <div className="md:col-span-2 flex items-center gap-2 pt-1 border-t border-slate-900/40">
+                          <input
+                            type="checkbox"
+                            id={`hidden-tc-${tcIdx}`}
+                            checked={tc.isHidden || false}
+                            onChange={(e) => handleTestCaseChange(tcIdx, 'isHidden', e.target.checked)}
+                            className="rounded border-slate-805 bg-slate-950 text-indigo-650 focus:ring-indigo-650 h-3.5 w-3.5 cursor-pointer"
+                          />
+                          <label htmlFor={`hidden-tc-${tcIdx}`} className="text-[10px] font-semibold text-slate-500 hover:text-slate-400 cursor-pointer select-none">
+                            Mark as Hidden Test Case (Hides inputs and expected outputs from students)
+                          </label>
                         </div>
                       </div>
                     ))}

@@ -415,8 +415,28 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
                   <div className="text-xs text-slate-400 leading-relaxed font-light">
                     Once you submit your program, we will run and compare it against the expected test cases.
                     <br />
-                    <span className="font-semibold text-slate-300">Expected console output:</span>
-                    <pre className="mt-1.5 p-2 bg-slate-950/60 border border-slate-900 rounded font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">{task.expected_output || 'Multiple test cases configured.'}</pre>
+                    <span className="font-semibold text-slate-300 block mb-1">Expected console output:</span>
+                    {task.metadata?.testCases && task.metadata.testCases.filter((tc: any) => !tc.isHidden).length > 0 ? (
+                      <div className="space-y-1.5 mt-1 max-h-[110px] overflow-y-auto pr-1">
+                        {task.metadata.testCases
+                          .filter((tc: any) => !tc.isHidden)
+                          .map((tc: any, index: number) => (
+                            <div key={index} className="bg-slate-950/80 border border-slate-900 rounded p-2 text-[10px] font-mono space-y-0.5">
+                              <span className="text-[8.5px] font-bold text-indigo-400 uppercase block">Visible Test Case #{index + 1}</span>
+                              {tc.input && (
+                                <div>
+                                  <span className="text-slate-500">Input:</span> <code className="text-slate-300 bg-slate-900 px-1 py-0.5 rounded">{tc.input}</code>
+                                </div>
+                              )}
+                              <div>
+                                  <span className="text-slate-500">Expected:</span> <code className="text-emerald-400 bg-slate-900 px-1 py-0.5 rounded">{tc.expected}</code>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <pre className="mt-1.5 p-2 bg-slate-950/60 border border-slate-900 rounded font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">{task.expected_output || 'Multiple test cases configured.'}</pre>
+                    )}
                   </div>
                 )
               )}
