@@ -435,7 +435,9 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
                           ))}
                       </div>
                     ) : (
-                      <pre className="mt-1.5 p-2 bg-slate-950/60 border border-slate-900 rounded font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">{task.expected_output || 'Multiple test cases configured.'}</pre>
+                      <pre className="mt-1.5 p-2 bg-slate-950/60 border border-slate-900 rounded font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">
+                        {task.expected_output || (task.metadata?.testCases?.length > 0 ? 'Multiple test cases configured (outputs hidden).' : 'No expected output configured.')}
+                      </pre>
                     )}
                   </div>
                 )

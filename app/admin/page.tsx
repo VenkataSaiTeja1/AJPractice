@@ -591,7 +591,7 @@ export default function TeacherAdminDashboard() {
         payload.cloud_ide_url = null;
       } else if (taskType === 'coding') {
         payload.starter_code = taskStarter;
-        payload.expected_output = codingTestCases[0]?.expected || '';
+        payload.expected_output = codingTestCases.find(tc => !tc.isHidden)?.expected || '';
         payload.cloud_ide_url = null;
         payload.metadata = { testCases: codingTestCases };
       } else if (taskType === 'cloud_lab') {
