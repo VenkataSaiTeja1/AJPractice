@@ -191,17 +191,19 @@ export default function PracticePage({ params }: PageProps) {
               {task.description}
             </p>
 
-            {task.type === 'coding' && task.metadata?.testCases && task.metadata.testCases.length > 0 && (
+            {task.type === 'coding' && task.metadata?.testCases && task.metadata.testCases.filter((tc: any) => !tc.isHidden).length > 0 && (
               <div className="mt-4 pt-3 border-t border-slate-900 space-y-2">
                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Scheduled Test Cases</h4>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                  {task.metadata.testCases.map((tc: any, idx: number) => (
-                    <div key={idx} className="text-[10px] bg-slate-50 p-2 rounded border border-slate-200 font-mono space-y-0.5">
-                      <span className="text-indigo-650 font-bold block uppercase text-[8px]">Test Case #{idx + 1}</span>
-                      <div><span className="text-slate-500">Input (stdin):</span> <code className="text-slate-800">{tc.input || '(empty)'}</code></div>
-                      <div><span className="text-slate-500">Expected:</span> <code className="text-emerald-700">{tc.expected}</code></div>
-                    </div>
-                  ))}
+                  {task.metadata.testCases
+                    .filter((tc: any) => !tc.isHidden)
+                    .map((tc: any, idx: number) => (
+                      <div key={idx} className="text-[10px] bg-slate-50 p-2 rounded border border-slate-200 font-mono space-y-0.5">
+                        <span className="text-indigo-650 font-bold block uppercase text-[8px]">Test Case #{idx + 1}</span>
+                        <div><span className="text-slate-500">Input (stdin):</span> <code className="text-slate-800">{tc.input || '(empty)'}</code></div>
+                        <div><span className="text-slate-500">Expected:</span> <code className="text-emerald-700">{tc.expected}</code></div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
