@@ -33,7 +33,9 @@ export default function StudentDashboard() {
     total: 0,
     completed: 0,
     failed: 0,
-    rate: 0
+    rate: 0,
+    quizScore: 0,
+    codingScore: 0
   });
 
   const fetchData = async (userProfile: any) => {
@@ -100,9 +102,60 @@ export default function StudentDashboard() {
         const failed = Object.values(bestSubmissions).filter((s: any) => s.status === 'failed').length;
         const rate = Math.round((completed / total) * 100);
 
-        setStats({ total, completed, failed, rate });
+        const now = new Date();
+
+        // Calculate Quiz Score
+        const scheduledQuizzes = yearTasks.filter(t => {
+          if (t.type !== 'quiz') return false;
+          return !t.start_time || new Date(t.start_time) <= now;
+        });
+        const attemptedQuizzes = scheduledQuizzes.filter(t => !!bestSubmissions[t.id]);
+        const attemptedQuizCount = attemptedQuizzes.length;
+        const missedQuizCount = scheduledQuizzes.length - attemptedQuizCount;
+
+        let calculatedQuizScore = 0;
+        if (attemptedQuizCount > 0) {
+          const totalQuizScoreSum = attemptedQuizzes.reduce((sum, t) => sum + (bestSubmissions[t.id].score || 0), 0);
+          const averageQuizPercent = totalQuizScoreSum / attemptedQuizCount;
+          calculatedQuizScore = Math.max(0, (averageQuizPercent / 10) - missedQuizCount);
+        }
+
+        // Calculate Coding Score
+        const scheduledCoding = yearTasks.filter(t => {
+          if (t.type !== 'coding') return false;
+          return !t.start_time || new Date(t.start_time) <= now;
+        });
+        const attemptedCoding = scheduledCoding.filter(t => !!bestSubmissions[t.id]);
+        const attemptedCodingCount = attemptedCoding.length;
+
+        let calculatedCodingScore = 0;
+        if (attemptedCodingCount > 0) {
+          const totalCodingScoreSum = attemptedCoding.reduce((sum, t) => sum + (bestSubmissions[t.id].score || 0), 0);
+          const averageCodingPercent = totalCodingScoreSum / attemptedCodingCount;
+          calculatedCodingScore = averageCodingPercent / 10;
+        }
+
+        // Merge with database profile score (handles wiped tasks)
+        const finalQuizScore = Math.max(Number(dbProfile?.overall_quiz_score || 0), calculatedQuizScore);
+        const finalCodingScore = Math.max(Number(dbProfile?.overall_coding_score || 0), calculatedCodingScore);
+
+        setStats({ 
+          total, 
+          completed, 
+          failed, 
+          rate,
+          quizScore: finalQuizScore,
+          codingScore: finalCodingScore
+        });
       } else {
-        setStats({ total: 0, completed: 0, failed: 0, rate: 0 });
+        setStats({ 
+          total: 0, 
+          completed: 0, 
+          failed: 0, 
+          rate: 0,
+          quizScore: Number(dbProfile?.overall_quiz_score || 0),
+          codingScore: Number(dbProfile?.overall_coding_score || 0)
+        });
       }
 
     } catch (err: any) {
@@ -332,9 +385,9 @@ export default function StudentDashboard() {
             <div className="h-3 w-px bg-slate-800" />
             <div>Syllabus: <span className="text-indigo-400 font-medium">{stats.rate}%</span></div>
             <div className="h-3 w-px bg-slate-800" />
-            <div>Quiz Grade: <span className="text-emerald-400 font-medium">{profile?.overall_quiz_score !== null && profile?.overall_quiz_score !== undefined ? `${Number(profile.overall_quiz_score).toFixed(1)}/10` : '0.0/10'}</span></div>
+            <div>Quiz Grade: <span className="text-emerald-400 font-medium">{stats.quizScore.toFixed(1)}/10</span></div>
             <div className="h-3 w-px bg-slate-800" />
-            <div>Coding Grade: <span className="text-indigo-400 font-medium">{profile?.overall_coding_score !== null && profile?.overall_coding_score !== undefined ? `${Number(profile.overall_coding_score).toFixed(1)}/10` : '0.0/10'}</span></div>
+            <div>Coding Grade: <span className="text-indigo-400 font-medium">{stats.codingScore.toFixed(1)}/10</span></div>
           </div>
         </div>
 

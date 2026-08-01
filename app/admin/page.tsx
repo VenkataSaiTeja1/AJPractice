@@ -1609,35 +1609,94 @@ export default function TeacherAdminDashboard() {
                     return matchYear && matchSection;
                   });
 
+                  const getStudentScores = (student: any) => {
+                    const studentYear = student.year || 3;
+                    const studentTasks = tasks.filter(t => {
+                      if (t.year !== studentYear) return false;
+                      if (studentYear === 2) {
+                        return t.section === student.section || t.section === 'All' || !t.section;
+                      }
+                      return true;
+                    });
+
+                    const studentSubs = submissions.filter(sub => sub.student_id === student.id);
+                    const bestSubmissions: { [key: string]: any } = {};
+                    studentSubs.forEach(sub => {
+                      if (!bestSubmissions[sub.task_id] || sub.score > bestSubmissions[sub.task_id].score) {
+                        bestSubmissions[sub.task_id] = sub;
+                      }
+                    });
+
+                    const now = new Date();
+
+                    // Quiz
+                    const scheduledQuizzes = studentTasks.filter(t => {
+                      if (t.type !== 'quiz') return false;
+                      return !t.start_time || new Date(t.start_time) <= now;
+                    });
+                    const attemptedQuizzes = scheduledQuizzes.filter(t => !!bestSubmissions[t.id]);
+                    const attemptedQuizCount = attemptedQuizzes.length;
+                    const missedQuizCount = scheduledQuizzes.length - attemptedQuizCount;
+
+                    let calculatedQuizScore = 0;
+                    if (attemptedQuizCount > 0) {
+                      const totalQuizScoreSum = attemptedQuizzes.reduce((sum, t) => sum + (bestSubmissions[t.id].score || 0), 0);
+                      const averageQuizPercent = totalQuizScoreSum / attemptedQuizCount;
+                      calculatedQuizScore = Math.max(0, (averageQuizPercent / 10) - missedQuizCount);
+                    }
+
+                    // Coding
+                    const scheduledCoding = studentTasks.filter(t => {
+                      if (t.type !== 'coding') return false;
+                      return !t.start_time || new Date(t.start_time) <= now;
+                    });
+                    const attemptedCoding = scheduledCoding.filter(t => !!bestSubmissions[t.id]);
+                    const attemptedCodingCount = attemptedCoding.length;
+
+                    let calculatedCodingScore = 0;
+                    if (attemptedCodingCount > 0) {
+                      const totalCodingScoreSum = attemptedCoding.reduce((sum, t) => sum + (bestSubmissions[t.id].score || 0), 0);
+                      const averageCodingPercent = totalCodingScoreSum / attemptedCodingCount;
+                      calculatedCodingScore = averageCodingPercent / 10;
+                    }
+
+                    const quizScore = Math.max(Number(student.overall_quiz_score || 0), calculatedQuizScore);
+                    const codingScore = Math.max(Number(student.overall_coding_score || 0), calculatedCodingScore);
+
+                    return { quizScore, codingScore };
+                  };
+
                   return filtered.length > 0 ? (
-                    filtered.map(s => (
-                      <tr key={s.id} className="hover:bg-slate-900/10">
-                        <td className="px-4 py-3 font-mono font-semibold text-slate-200">{s.roll_number}</td>
-                        <td className="px-4 py-3 font-semibold text-white">{s.full_name}</td>
-                        <td className="px-4 py-3 font-semibold text-indigo-400">
-                          {s.year === 2 ? `2nd Year (Sec ${s.section || 'A'})` : '3rd Year (No Sec)'}
-                        </td>
-                        <td className="px-4 py-3 text-center font-mono font-bold text-emerald-400">
-                          {s.overall_quiz_score !== null && s.overall_quiz_score !== undefined ? `${Number(s.overall_quiz_score).toFixed(1)}/10` : '0.0/10'}
-                        </td>
-                        <td className="px-4 py-3 text-center font-mono font-bold text-indigo-400">
-                          {s.overall_coding_score !== null && s.overall_coding_score !== undefined ? `${Number(s.overall_coding_score).toFixed(1)}/10` : '0.0/10'}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-slate-400">{s.password}</td>
-                        <td className="px-4 py-3">
-                          {s.first_login ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400 border border-amber-500/20">Must Change</span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400 border border-emerald-500/20">Updated</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right space-x-2">
-                          <button
-                            onClick={() => handleOpenStudentModal(s)}
-                            className="px-2.5 py-1 text-[10.5px] rounded bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-850 cursor-pointer"
-                          >
-                            Edit
-                          </button>
+                    filtered.map(s => {
+                      const scores = getStudentScores(s);
+                      return (
+                        <tr key={s.id} className="hover:bg-slate-900/10">
+                          <td className="px-4 py-3 font-mono font-semibold text-slate-200">{s.roll_number}</td>
+                          <td className="px-4 py-3 font-semibold text-white">{s.full_name}</td>
+                          <td className="px-4 py-3 font-semibold text-indigo-400">
+                            {s.year === 2 ? `2nd Year (Sec ${s.section || 'A'})` : '3rd Year (No Sec)'}
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono font-bold text-emerald-400">
+                            {scores.quizScore.toFixed(1)}/10
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono font-bold text-indigo-400">
+                            {scores.codingScore.toFixed(1)}/10
+                          </td>
+                          <td className="px-4 py-3 font-mono text-slate-400">{s.password}</td>
+                          <td className="px-4 py-3">
+                            {s.first_login ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400 border border-amber-500/20">Must Change</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400 border border-emerald-500/20">Updated</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right space-x-2">
+                            <button
+                              onClick={() => handleOpenStudentModal(s)}
+                              className="px-2.5 py-1 text-[10.5px] rounded bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-850 cursor-pointer"
+                            >
+                              Edit
+                            </button>
                           <button
                             onClick={() => handleDeleteStudent(s.id)}
                             className="px-2.5 py-1 text-[10.5px] rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 cursor-pointer"
@@ -1646,10 +1705,11 @@ export default function TeacherAdminDashboard() {
                           </button>
                         </td>
                       </tr>
-                    ))
-                  ) : (
+                    );
+                  })
+                ) : (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-slate-500 italic">No student accounts registered for the filtered year/section.</td>
+                      <td colSpan={8} className="px-4 py-8 text-center text-slate-500 italic">No student accounts registered for the filtered year/section.</td>
                     </tr>
                   );
                 })()}

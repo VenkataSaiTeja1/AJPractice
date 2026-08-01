@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Play, Send, RefreshCw, Terminal, CheckCircle2, XCircle, AlertCircle, FileCode, ShieldAlert, Maximize2, Minimize2 } from 'lucide-react';
+import { Play, Send, RefreshCw, Terminal, CheckCircle2, XCircle, AlertCircle, FileCode, ShieldAlert, Maximize2, Minimize2, Clipboard } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { supabase } from '@/lib/supabase';
 
 interface CodingProps {
   task: any;
@@ -25,6 +26,27 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const [gradeResult, setGradeResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [executionCount, setExecutionCount] = useState(0);
+  const [rollNumber, setRollNumber] = useState('');
+
+  useEffect(() => {
+    const fetchStudentRoll = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('roll_number')
+          .eq('id', studentId)
+          .single();
+        if (!error && data) {
+          setRollNumber(data.roll_number || '');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    if (studentId) {
+      fetchStudentRoll();
+    }
+  }, [studentId]);
 
   // Resize & Maximize Layout states
   const [isMaximized, setIsMaximized] = useState(false);
@@ -241,6 +263,27 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               </button>
 
               <button
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                      setCode(text);
+                    }
+                  } catch (err) {
+                    const text = window.prompt("Paste your code here:");
+                    if (text !== null) {
+                      setCode(text);
+                    }
+                  }
+                }}
+                type="button"
+                className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-medium cursor-pointer transition-colors"
+              >
+                <Clipboard className="h-3.5 w-3.5 text-indigo-405" />
+                Paste Code
+              </button>
+
+              <button
                 onClick={handleReset}
                 disabled={limitReached}
                 className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-medium cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -252,9 +295,21 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           </div>
 
           {/* Custom Text Editor Container */}
-          <div className="flex-1 flex overflow-auto font-mono text-sm bg-slate-950/40 py-3 select-text min-h-0">
+          <div className="flex-1 flex overflow-auto font-mono text-sm bg-slate-950/40 py-3 select-text min-h-0 relative">
+            {/* Anti-OCR / Google Lens Roll Number Watermark Overlay */}
+            <div className="absolute inset-0 pointer-events-none select-none overflow-hidden flex flex-wrap gap-x-14 gap-y-16 items-center justify-center p-8 opacity-[0.05]">
+              {Array.from({ length: 28 }).map((_, i) => (
+                <div 
+                  key={i} 
+                  className="text-slate-500 font-extrabold text-[13px] tracking-widest font-mono rotate-[-25deg] uppercase whitespace-nowrap"
+                >
+                  {rollNumber || "STUDENT"}
+                </div>
+              ))}
+            </div>
+
             {/* Gutter Line Numbers */}
-            <div className="w-11 text-right text-slate-600 pr-3 border-r border-slate-850 select-none text-xs leading-6">
+            <div className="w-11 text-right text-slate-600 pr-3 border-r border-slate-850 select-none text-xs leading-6 relative z-10">
               {lineNumbers.map(n => (
                 <div key={n}>{n}</div>
               ))}
@@ -265,7 +320,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               value={code}
               onChange={(e) => setCode(e.target.value)}
               disabled={limitReached}
-              className="flex-1 pl-3 bg-transparent text-slate-100 font-mono text-xs sm:text-sm leading-6 outline-none border-none resize-none h-full overflow-y-auto whitespace-pre tab-size-4 disabled:cursor-not-allowed"
+              className="flex-1 pl-3 bg-transparent text-slate-100 font-mono text-xs sm:text-sm leading-6 outline-none border-none resize-none h-full overflow-y-auto whitespace-pre tab-size-4 disabled:cursor-not-allowed relative z-10"
               style={{ tabSize: 4 }}
               placeholder="// Enter your Java code here"
               spellCheck={false}
