@@ -270,12 +270,122 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Failed to save submission: ${submitError.message}` }, { status: 500 });
     }
 
+    // 4. Update student's overall quiz and coding scores in profiles table
+    try {
+      await updateStudentOverallGrades(studentId);
+    } catch (gradeUpdateErr: any) {
+      console.error('Error updating overall grades:', gradeUpdateErr.message);
+    }
+
     return NextResponse.json({
       success: true,
       submission,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+async function updateStudentOverallGrades(studentId: string) {
+  // 1. Fetch student profile to get their target year and section
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', studentId)
+    .single();
+
+  if (profileErr || !profile) {
+    throw new Error(`Profile not found for student ${studentId}: ${profileErr?.message}`);
+  }
+
+  // 2. Fetch all tasks
+  const { data: allTasks, error: tasksErr } = await supabase
+    .from('tasks')
+    .select('*');
+
+  if (tasksErr) {
+    throw new Error(`Failed to fetch tasks: ${tasksErr.message}`);
+  }
+
+  // 3. Filter tasks assigned to this student
+  const studentYear = profile.year || 3;
+  const studentTasks = (allTasks || []).filter(t => {
+    if (t.year !== studentYear) return false;
+    if (studentYear === 2) {
+      return t.section === profile.section || t.section === 'All' || !t.section;
+    }
+    return true;
+  });
+
+  // 4. Fetch all real submissions by this student
+  const { data: allSubmissions, error: subsErr } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('student_id', studentId)
+    .eq('is_run', false);
+
+  if (subsErr) {
+    throw new Error(`Failed to fetch submissions: ${subsErr.message}`);
+  }
+
+  // 5. Find highest score per task
+  const bestSubmissions: { [key: string]: any } = {};
+  (allSubmissions || []).forEach(sub => {
+    if (!bestSubmissions[sub.task_id] || sub.score > bestSubmissions[sub.task_id].score) {
+      bestSubmissions[sub.task_id] = sub;
+    }
+  });
+
+  const now = new Date();
+
+  // --- QUIZ SCORE CALCULATION ---
+  // Quiz tasks assigned to the student that have started
+  const scheduledQuizzes = studentTasks.filter(t => {
+    if (t.type !== 'quiz') return false;
+    return !t.start_time || new Date(t.start_time) <= now;
+  });
+
+  const attemptedQuizzes = scheduledQuizzes.filter(t => !!bestSubmissions[t.id]);
+  const attemptedQuizCount = attemptedQuizzes.length;
+  const missedQuizCount = scheduledQuizzes.length - attemptedQuizCount;
+
+  let finalQuizScore = 0;
+  if (attemptedQuizCount > 0) {
+    const totalQuizScoreSum = attemptedQuizzes.reduce((sum, t) => sum + (bestSubmissions[t.id].score || 0), 0);
+    const averageQuizPercent = totalQuizScoreSum / attemptedQuizCount; // 0 to 100
+    const averageQuizOutOf10 = averageQuizPercent / 10; // 0 to 10
+    finalQuizScore = Math.max(0, averageQuizOutOf10 - missedQuizCount);
+  }
+
+  // --- CODING SCORE CALCULATION ---
+  // Coding tasks assigned to the student that have started
+  const scheduledCoding = studentTasks.filter(t => {
+    if (t.type !== 'coding') return false;
+    return !t.start_time || new Date(t.start_time) <= now;
+  });
+
+  const attemptedCoding = scheduledCoding.filter(t => !!bestSubmissions[t.id]);
+  const attemptedCodingCount = attemptedCoding.length;
+
+  let finalCodingScore = 0;
+  if (attemptedCodingCount > 0) {
+    // Average of attempted coding tasks, normalized to 10
+    const totalCodingScoreSum = attemptedCoding.reduce((sum, t) => sum + (bestSubmissions[t.id].score || 0), 0);
+    const averageCodingPercent = totalCodingScoreSum / attemptedCodingCount;
+    finalCodingScore = averageCodingPercent / 10;
+  }
+
+  // 6. Save computed scores to profiles table
+  const { error: updateErr } = await supabase
+    .from('profiles')
+    .update({
+      overall_quiz_score: finalQuizScore,
+      overall_coding_score: finalCodingScore
+    })
+    .eq('id', studentId);
+
+  if (updateErr) {
+    throw new Error(`Failed to update student profile scores: ${updateErr.message}`);
   }
 }
 

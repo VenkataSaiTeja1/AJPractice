@@ -13,3 +13,8 @@ ADD COLUMN IF NOT EXISTS section VARCHAR(10) CHECK (section IN ('A', 'B'));
 -- (Exercises can be assigned to 'A', 'B', or 'All' sections, or NULL for 3rd Year tasks)
 ALTER TABLE public.tasks 
 ADD COLUMN IF NOT EXISTS section VARCHAR(10) CHECK (section IN ('A', 'B', 'All'));
+
+-- 3. Alter public.profiles table to add overall grades columns
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS overall_quiz_score NUMERIC DEFAULT 0.0,
+ADD COLUMN IF NOT EXISTS overall_coding_score NUMERIC DEFAULT 0.0;

@@ -1594,6 +1594,8 @@ export default function TeacherAdminDashboard() {
                   <th className="px-4 py-3">Roll Number</th>
                   <th className="px-4 py-3">Full Name</th>
                   <th className="px-4 py-3">Year & Section</th>
+                  <th className="px-4 py-3 text-center">Quiz Score (Avg - Penalty)</th>
+                  <th className="px-4 py-3 text-center">Coding Score (Avg)</th>
                   <th className="px-4 py-3">Active Password</th>
                   <th className="px-4 py-3">First Login Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -1614,6 +1616,12 @@ export default function TeacherAdminDashboard() {
                         <td className="px-4 py-3 font-semibold text-white">{s.full_name}</td>
                         <td className="px-4 py-3 font-semibold text-indigo-400">
                           {s.year === 2 ? `2nd Year (Sec ${s.section || 'A'})` : '3rd Year (No Sec)'}
+                        </td>
+                        <td className="px-4 py-3 text-center font-mono font-bold text-emerald-400">
+                          {s.overall_quiz_score !== null && s.overall_quiz_score !== undefined ? `${Number(s.overall_quiz_score).toFixed(1)}/10` : '0.0/10'}
+                        </td>
+                        <td className="px-4 py-3 text-center font-mono font-bold text-indigo-400">
+                          {s.overall_coding_score !== null && s.overall_coding_score !== undefined ? `${Number(s.overall_coding_score).toFixed(1)}/10` : '0.0/10'}
                         </td>
                         <td className="px-4 py-3 font-mono text-slate-400">{s.password}</td>
                         <td className="px-4 py-3">

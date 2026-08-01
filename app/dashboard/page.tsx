@@ -40,6 +40,17 @@ export default function StudentDashboard() {
     try {
       setLoading(true);
 
+      // Fetch fresh profile from database to get latest quiz and program grades
+      const { data: dbProfile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userProfile.id)
+        .single();
+      
+      if (!profileErr && dbProfile) {
+        setProfile(dbProfile);
+      }
+
       // Fetch Tasks
       const { data: dbTasks, error: tasksError } = await supabase
         .from('tasks')
@@ -316,10 +327,14 @@ export default function StudentDashboard() {
               Master Java exercises scheduled by your faculty administrator. Verify outputs inside code environments.
             </p>
           </div>
-          <div className="flex items-center gap-4 mt-6 text-xs text-slate-400">
-            <div>Roll Number: <span className="text-white font-medium">{profile?.roll_number || 'N/A'}</span></div>
+          <div className="flex items-center flex-wrap gap-4 mt-6 text-xs text-slate-400">
+            <div>Roll: <span className="text-white font-medium">{profile?.roll_number || 'N/A'}</span></div>
             <div className="h-3 w-px bg-slate-800" />
-            <div>Overall Syllabus: <span className="text-indigo-400 font-medium">{stats.rate}%</span></div>
+            <div>Syllabus: <span className="text-indigo-400 font-medium">{stats.rate}%</span></div>
+            <div className="h-3 w-px bg-slate-800" />
+            <div>Quiz Grade: <span className="text-emerald-400 font-medium">{profile?.overall_quiz_score !== null && profile?.overall_quiz_score !== undefined ? `${Number(profile.overall_quiz_score).toFixed(1)}/10` : '0.0/10'}</span></div>
+            <div className="h-3 w-px bg-slate-800" />
+            <div>Coding Grade: <span className="text-indigo-400 font-medium">{profile?.overall_coding_score !== null && profile?.overall_coding_score !== undefined ? `${Number(profile.overall_coding_score).toFixed(1)}/10` : '0.0/10'}</span></div>
           </div>
         </div>
 
