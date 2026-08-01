@@ -27,6 +27,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const [errorMessage, setErrorMessage] = useState('');
   const [executionCount, setExecutionCount] = useState(0);
   const [rollNumber, setRollNumber] = useState('');
+  const [resetConfirm, setResetConfirm] = useState(false);
 
   useEffect(() => {
     const fetchStudentRoll = async () => {
@@ -88,13 +89,19 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   }, [isMaximized]);
 
   const handleReset = () => {
-    if (window.confirm('Are you sure you want to reset the editor to the starter template?')) {
-      setCode(task.starter_code || '');
-      setConsoleOutput('');
-      setConsoleError('');
-      setExitCode(null);
-      setGradeResult(null);
+    if (!resetConfirm) {
+      setResetConfirm(true);
+      setTimeout(() => {
+        setResetConfirm(false);
+      }, 4000); // 4-second timeout window
+      return;
     }
+    setCode(task.starter_code || '');
+    setConsoleOutput('');
+    setConsoleError('');
+    setExitCode(null);
+    setGradeResult(null);
+    setResetConfirm(false);
   };
 
   const handleRunCode = async () => {
@@ -263,33 +270,16 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               </button>
 
               <button
-                onClick={async () => {
-                  try {
-                    const text = await navigator.clipboard.readText();
-                    if (text) {
-                      setCode(text);
-                    }
-                  } catch (err) {
-                    const text = window.prompt("Paste your code here:");
-                    if (text !== null) {
-                      setCode(text);
-                    }
-                  }
-                }}
-                type="button"
-                className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-medium cursor-pointer transition-colors"
-              >
-                <Clipboard className="h-3.5 w-3.5 text-indigo-405" />
-                Paste Code
-              </button>
-
-              <button
                 onClick={handleReset}
                 disabled={limitReached}
-                className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-medium cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex items-center gap-1 text-xs font-medium cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  resetConfirm 
+                    ? 'text-rose-500 hover:text-rose-450 font-semibold' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Reset Code
+                <RefreshCw className={`h-3.5 w-3.5 ${resetConfirm ? 'animate-spin' : ''}`} />
+                {resetConfirm ? 'Click to Confirm Reset' : 'Reset Code'}
               </button>
             </div>
           </div>
@@ -319,6 +309,21 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
             <textarea
               value={code}
               onChange={(e) => setCode(e.target.value)}
+              onPaste={(e) => {
+                e.preventDefault();
+                alert("Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.");
+              }}
+              onCopy={(e) => {
+                e.preventDefault();
+                alert("Malpractice Protection: Copying code from the sandbox is disabled.");
+              }}
+              onCut={(e) => {
+                e.preventDefault();
+                alert("Malpractice Protection: Cutting code is disabled.");
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+              }}
               disabled={limitReached}
               className="flex-1 pl-3 bg-transparent text-slate-100 font-mono text-xs sm:text-sm leading-6 outline-none border-none resize-none h-full overflow-y-auto whitespace-pre tab-size-4 disabled:cursor-not-allowed relative z-10"
               style={{ tabSize: 4 }}
