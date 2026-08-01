@@ -367,7 +367,7 @@ export default function StudentDashboard() {
   return (
     <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Student Welcome & Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
         {/* Welcome message */}
         <div className="lg:col-span-2 glass-card p-6 border border-slate-800 relative overflow-hidden flex flex-col justify-between">
@@ -380,19 +380,15 @@ export default function StudentDashboard() {
               Master Java exercises scheduled by your faculty administrator. Verify outputs inside code environments.
             </p>
           </div>
-          <div className="flex items-center flex-wrap gap-4 mt-6 text-xs text-slate-400">
-            <div>Roll: <span className="text-white font-medium">{profile?.roll_number || 'N/A'}</span></div>
+          <div className="flex items-center gap-4 mt-6 text-xs text-slate-400">
+            <div>Roll Number: <span className="text-white font-medium">{profile?.roll_number || 'N/A'}</span></div>
             <div className="h-3 w-px bg-slate-800" />
-            <div>Syllabus: <span className="text-indigo-400 font-medium">{stats.rate}%</span></div>
-            <div className="h-3 w-px bg-slate-800" />
-            <div>Quiz Grade: <span className="text-emerald-400 font-medium">{stats.quizScore.toFixed(1)}/10</span></div>
-            <div className="h-3 w-px bg-slate-800" />
-            <div>Coding Grade: <span className="text-indigo-400 font-medium">{stats.codingScore.toFixed(1)}/10</span></div>
+            <div>Java Practice Student Portal</div>
           </div>
         </div>
 
         {/* Stats card */}
-        <div className="lg:col-span-2 grid grid-cols-3 gap-4">
+        <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="glass-card p-4 border border-slate-800 flex flex-col justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Passed</span>
             <div className="flex items-baseline gap-1 mt-2">
@@ -424,6 +420,28 @@ export default function StudentDashboard() {
                 className="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full" 
                 style={{ width: `${stats.rate}%` }}
               />
+            </div>
+          </div>
+
+          <div className="glass-card p-4 border border-slate-800 flex flex-col justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Quiz Grade</span>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-3xl font-extrabold text-indigo-600">{stats.quizScore.toFixed(1)}</span>
+              <span className="text-xs text-slate-400">/ 10</span>
+            </div>
+            <div className="mt-3 flex items-center gap-1 text-[10px] text-indigo-500/90 font-semibold uppercase">
+              <Award className="h-3.5 w-3.5" /> Avg - Penalty
+            </div>
+          </div>
+
+          <div className="glass-card p-4 border border-slate-800 flex flex-col justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Coding Grade</span>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-3xl font-extrabold text-emerald-600">{stats.codingScore.toFixed(1)}</span>
+              <span className="text-xs text-slate-400">/ 10</span>
+            </div>
+            <div className="mt-3 flex items-center gap-1 text-[10px] text-emerald-500/90 font-semibold uppercase">
+              <Code className="h-3.5 w-3.5" /> Program Avg
             </div>
           </div>
         </div>
