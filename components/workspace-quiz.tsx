@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { HelpCircle, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { supabase } from '@/lib/supabase';
 
 interface QuizProps {
   task: any;
@@ -19,6 +20,28 @@ export default function WorkspaceQuiz({ task, studentId, submissions = [], onSub
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
+  const [rollNumber, setRollNumber] = useState('');
+
+  // Fetch student roll number for anti-OCR watermark overlay
+  useEffect(() => {
+    const fetchStudentRoll = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('roll_number')
+          .eq('id', studentId)
+          .single();
+        if (!error && data) {
+          setRollNumber(data.roll_number || '');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    if (studentId) {
+      fetchStudentRoll();
+    }
+  }, [studentId]);
 
   // Load previous submission if it exists
   useEffect(() => {
@@ -121,7 +144,7 @@ export default function WorkspaceQuiz({ task, studentId, submissions = [], onSub
           return (
             <div 
               key={q.id} 
-              className={`glass-card p-6 border transition-all duration-200 ${
+              className={`glass-card p-6 border transition-all duration-200 relative overflow-hidden ${
                 result
                   ? isCorrect
                     ? 'border-emerald-500/35 bg-emerald-950/5'
@@ -129,7 +152,19 @@ export default function WorkspaceQuiz({ task, studentId, submissions = [], onSub
                   : 'border-slate-800 hover:border-slate-700'
               }`}
             >
-              <div className="flex items-start gap-3">
+              {/* Anti-OCR / Google Lens Roll Number Watermark Overlay for this Question */}
+              <div className="absolute inset-0 pointer-events-none select-none overflow-hidden flex flex-wrap gap-x-12 gap-y-12 items-center justify-center p-4 opacity-[0.035]">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="text-slate-500 font-extrabold text-[12px] tracking-widest font-mono rotate-[-20deg] uppercase whitespace-nowrap"
+                  >
+                    {rollNumber || "STUDENT"}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-start gap-3 relative z-10">
                 <span className="h-6 w-6 shrink-0 flex items-center justify-center rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400">
                   {index + 1}
                 </span>
