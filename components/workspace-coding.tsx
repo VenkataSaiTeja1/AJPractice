@@ -183,10 +183,10 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const limitReached = false;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full">
       
       {/* Code Editor Column */}
-      <div className="flex flex-col glass-card border-slate-800 overflow-hidden relative h-[650px] resize-y min-h-[500px]">
+      <div className="flex flex-col glass-card border-slate-800 overflow-hidden relative h-[650px] w-full lg:w-1/2 lg:min-w-[30%] lg:max-w-[70%] lg:resize-x">
         {/* Editor Toolbar */}
         <div className="flex items-center justify-between px-4 py-3 bg-slate-950/80 border-b border-slate-800/80">
           <div className="flex items-center gap-2">

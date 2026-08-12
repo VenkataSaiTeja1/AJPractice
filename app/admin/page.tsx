@@ -2151,24 +2151,24 @@ export default function TeacherAdminDashboard() {
                         
                         <div className="space-y-1.5">
                           <label className="text-[9px] font-semibold uppercase text-slate-500">Test Input (stdin) #{tcIdx + 1}</label>
-                          <input
-                            type="text"
-                            placeholder="Stdin input parameters (leave blank if none)..."
+                          <textarea
+                            rows={3}
+                            placeholder="Stdin input parameters (one per line, leave blank if none)..."
                             value={tc.input}
                             onChange={(e) => handleTestCaseChange(tcIdx, 'input', e.target.value)}
-                            className="w-full glass-input text-[11px] py-1.5 font-mono"
+                            className="w-full glass-input text-[11px] py-1.5 font-mono resize-y leading-normal"
                           />
                         </div>
-
+ 
                         <div className="space-y-1.5">
                           <label className="text-[9px] font-semibold uppercase text-slate-500">Expected Output #{tcIdx + 1}</label>
-                          <input
-                            type="text"
+                          <textarea
+                            rows={3}
                             required
                             placeholder="Expected console output mismatch print..."
                             value={tc.expected}
                             onChange={(e) => handleTestCaseChange(tcIdx, 'expected', e.target.value)}
-                            className="w-full glass-input text-[11px] py-1.5 font-mono text-emerald-400"
+                            className="w-full glass-input text-[11px] py-1.5 font-mono text-emerald-400 resize-y leading-normal"
                           />
                         </div>
                         <div className="md:col-span-2 flex items-center gap-2 pt-1 border-t border-slate-900/40">
