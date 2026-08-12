@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar";
-import FullscreenEnforcer from "@/components/fullscreen-enforcer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,9 +30,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-200 text-slate-900">
         <Navbar />
-        <FullscreenEnforcer>
-          {children}
-        </FullscreenEnforcer>
+        {children}
       </body>
     </html>
   );

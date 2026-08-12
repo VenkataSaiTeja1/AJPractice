@@ -113,7 +113,22 @@ export default function WorkspaceQuiz({ task, studentId, submissions = [], onSub
   };
 
   return (
-    <div className="space-y-6">
+    <div 
+      className="space-y-6 select-none"
+      onCopy={(e) => {
+        e.preventDefault();
+        alert("Malpractice Protection: Copying quiz questions or content is strictly disabled.");
+      }}
+      onCut={(e) => {
+        e.preventDefault();
+      }}
+      onPaste={(e) => {
+        e.preventDefault();
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+      }}
+    >
       
       {/* Quiz Introduction Banner */}
       <div className="glass-card p-6 border-slate-800 bg-slate-900/10">

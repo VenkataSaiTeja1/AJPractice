@@ -185,29 +185,33 @@ export default function PracticePage({ params }: PageProps) {
         <div className="xl:col-span-1 space-y-6">
           
           {/* Details Card */}
-          <div className="glass-card p-5 border-slate-800 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Problem Statement</h3>
-            <p className="text-xs text-slate-300 font-light leading-relaxed whitespace-pre-wrap">
-              {task.description}
-            </p>
+          <div className="glass-card p-5 border-slate-800 space-y-3 flex flex-col h-[280px] min-h-[180px] max-h-[600px] resize-y overflow-auto">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 shrink-0">Problem Statement</h3>
+            <div className="flex-1 overflow-y-auto pr-1">
+              <p className="text-xs text-slate-300 font-light leading-relaxed whitespace-pre-wrap">
+                {task.description}
+              </p>
+            </div>
 
-            {task.type === 'coding' && task.metadata?.testCases && task.metadata.testCases.filter((tc: any) => !tc.isHidden).length > 0 && (
-              <div className="mt-4 pt-3 border-t border-slate-900 space-y-2">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Scheduled Test Cases</h4>
-                <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                  {task.metadata.testCases
-                    .filter((tc: any) => !tc.isHidden)
-                    .map((tc: any, idx: number) => (
-                      <div key={idx} className="text-[10px] bg-slate-50 p-2 rounded border border-slate-200 font-mono space-y-0.5">
-                        <span className="text-indigo-650 font-bold block uppercase text-[8px]">Test Case #{idx + 1}</span>
-                        <div><span className="text-slate-500">Input (stdin):</span> <code className="text-slate-800">{tc.input || '(empty)'}</code></div>
-                        <div><span className="text-slate-500">Expected:</span> <code className="text-emerald-700">{tc.expected}</code></div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Scheduled Test Cases Card */}
+          {task.type === 'coding' && task.metadata?.testCases && task.metadata.testCases.filter((tc: any) => !tc.isHidden).length > 0 && (
+            <div className="glass-card p-5 border-slate-800 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Scheduled Test Cases</h4>
+              <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                {task.metadata.testCases
+                  .filter((tc: any) => !tc.isHidden)
+                  .map((tc: any, idx: number) => (
+                    <div key={idx} className="text-[10px] bg-slate-950/40 p-2.5 rounded border border-slate-800/80 font-mono space-y-1">
+                      <span className="text-indigo-400 font-bold block uppercase text-[8px]">Test Case #{idx + 1}</span>
+                      <div><span className="text-slate-500">Input (stdin):</span> <code className="text-slate-350">{tc.input || '(empty)'}</code></div>
+                      <div><span className="text-slate-500">Expected:</span> <code className="text-emerald-400">{tc.expected}</code></div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Submissions Log Card */}
           <div className="glass-card p-5 border-slate-800 space-y-4">

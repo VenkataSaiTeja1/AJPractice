@@ -49,9 +49,6 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
     }
   }, [studentId]);
 
-  // Resize & Maximize Layout states
-  const [isMaximized, setIsMaximized] = useState(false);
-
   // Line numbers helper
   const [lineNumbers, setLineNumbers] = useState<number[]>([1]);
 
@@ -76,17 +73,6 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   useEffect(() => {
     fetchExecutionCount();
   }, [studentId, task.id]);
-
-  // Listen to Escape key to exit fullscreen mode
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isMaximized) {
-        setIsMaximized(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMaximized]);
 
   const handleReset = () => {
     if (!resetConfirm) {
@@ -197,78 +183,26 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const limitReached = false;
 
   return (
-    <div className={isMaximized 
-      ? "fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-hidden flex flex-col gap-4" 
-      : "grid grid-cols-1 lg:grid-cols-2 gap-6"
-    }>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       
-      {/* Maximize Header Banner */}
-      {isMaximized && (
-        <div className="flex items-center justify-between border-b border-slate-900 pb-2">
-          <div>
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-              <FileCode className="h-4 w-4 text-indigo-400" />
-              Fullscreen Practice Workspace
-            </h3>
-            <p className="text-[10px] text-slate-500 font-light mt-0.5">Solve, run, and evaluate Java sandbox exercises in full screen.</p>
+      {/* Code Editor Column */}
+      <div className="flex flex-col glass-card border-slate-800 overflow-hidden relative h-[650px] resize-y min-h-[500px]">
+        {/* Editor Toolbar */}
+        <div className="flex items-center justify-between px-4 py-3 bg-slate-950/80 border-b border-slate-800/80">
+          <div className="flex items-center gap-2">
+            <FileCode className="h-4.5 w-4.5 text-indigo-400" />
+            <span className="text-xs font-semibold text-slate-200 font-mono">Main.java</span>
           </div>
-          <button
-            onClick={() => setIsMaximized(false)}
-            className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-semibold px-3 py-1.5 rounded border border-slate-800 bg-slate-900 hover:bg-slate-850 cursor-pointer transition-all"
-          >
-            <Minimize2 className="h-3.5 w-3.5" />
-            Exit Fullscreen
-          </button>
-        </div>
-      )}
-
-      {/* Grid container wrapper */}
-      <div className={isMaximized 
-        ? "flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0" 
-        : "contents"
-      }>
-        
-        {/* Code Editor Column */}
-        <div className={`flex flex-col glass-card border-slate-800 overflow-hidden relative ${
-          isMaximized 
-            ? "h-full" 
-            : "h-[650px] resize-y min-h-[500px]"
-        }`}>
-          {/* Editor Toolbar */}
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-950/80 border-b border-slate-800/80">
-            <div className="flex items-center gap-2">
-              <FileCode className="h-4.5 w-4.5 text-indigo-400" />
-              <span className="text-xs font-semibold text-slate-200 font-mono">Main.java</span>
-            </div>
-            
-            {/* Execution Counter */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10.5px] font-mono font-medium">
-              <span className="text-slate-500">Attempts:</span>
-              <span className="text-indigo-400">
-                {executionCount}
-              </span>
-            </div>
+          
+          {/* Execution Counter */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10.5px] font-mono font-medium">
+            <span className="text-slate-500">Attempts:</span>
+            <span className="text-indigo-400">
+              {executionCount}
+            </span>
+          </div>
 
             <div className="flex items-center gap-4">
-              {/* Maximize Toggle Trigger */}
-              <button
-                onClick={() => setIsMaximized(!isMaximized)}
-                type="button"
-                className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-semibold cursor-pointer transition-colors"
-              >
-                {isMaximized ? (
-                  <>
-                    <Minimize2 className="h-3.5 w-3.5 text-indigo-400" />
-                    Exit Fullscreen
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="h-3.5 w-3.5 text-indigo-400" />
-                    Maximize
-                  </>
-                )}
-              </button>
-
               <button
                 onClick={handleReset}
                 disabled={limitReached}
@@ -370,11 +304,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
         </div>
 
         {/* Terminal Output & Results Column */}
-        <div className={`flex flex-col gap-6 ${
-          isMaximized 
-            ? "h-full min-h-0" 
-            : "h-[650px]"
-        }`}>
+        <div className="flex flex-col gap-6 h-[650px]">
           
           {/* Terminal Card */}
           <div className="flex-1 glass-card border-slate-800 overflow-hidden flex flex-col min-h-0">
@@ -506,8 +436,6 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           </div>
 
         </div>
-
-      </div>
 
     </div>
   );
