@@ -275,7 +275,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               placeholder="Type console inputs here..."
               value={stdin}
               onChange={(e) => setStdin(e.target.value)}
-              rows={isMaximized ? 3 : 2}
+              rows={2}
               disabled={limitReached}
               className="w-full glass-input font-mono text-xs resize-none disabled:cursor-not-allowed"
             />
