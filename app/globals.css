@@ -1,15 +1,30 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────
+   Design System — Light Mode
+   Inspired by Apple / Linear / Vercel aesthetics
+   ───────────────────────────────────────────── */
+
 :root {
-  --background: #e2e8f0; /* Eye-safe soft slate-gray light mode, low glare */
-  --foreground: #0f172a; /* Deep slate-900 for high contrast */
-  --primary: #4f46e5;    /* Vibrant Indigo-600 */
-  --primary-hover: #3730a3; /* Indigo-800 */
-  --secondary: #e2e8f0;  /* Slate-200 */
-  --border: #cbd5e1;     /* Slate-300 */
-  --card-bg: #ffffff;    /* Pure white cards */
-  --success: #16a34a;    /* Green-600 */
-  --error: #dc2626;      /* Red-600 */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: rgba(79, 70, 229, 0.08);
+  --secondary: #f1f5f9;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --card-bg: #ffffff;
+  --muted: #64748b;
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning: #d97706;
+  --radius: 1rem;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
 }
 
 @theme inline {
@@ -19,130 +34,188 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ─── Base ────────────────────────────────── */
+
 body {
-  background-color: var(--background) !important;
-  color: var(--foreground) !important;
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Redefining glass-card for a clean, premium light-mode layout */
+/* ─── Glass Card ─────────────────────────── */
+
 .glass-card {
-  background-color: var(--card-bg) !important;
-  border: 1px solid rgba(15, 23, 42, 0.08) !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
-  border-radius: 1rem !important;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-/* Inputs styled for light mode */
+/* ─── Card Hover — subtle lift + deeper shadow */
+
+.card-hover {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.25s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--border-hover);
+}
+
+/* ─── Glass Input ────────────────────────── */
+
 .glass-input {
-  background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important; /* slate-300 */
-  color: var(--foreground) !important;
-  border-radius: 0.5rem !important;
-  padding: 0.625rem 0.875rem !important;
-  transition: all 0.25s ease-in-out !important;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-input::placeholder {
+  color: var(--muted);
 }
 
 .glass-input:focus {
-  outline: none !important;
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
-/* CSS Injections to map Tailwind dark-mode classes to premium light-mode colors */
-.text-white {
-  color: #0f172a !important; /* Force headers to be deep dark slate */
-}
-.text-slate-100 {
-  color: #0f172a !important;
-}
-.text-slate-200 {
-  color: #1e293b !important;
-}
-.text-slate-300 {
-  color: #334155 !important;
-}
-.text-slate-400 {
-  color: #475569 !important;
-}
-.text-slate-500 {
-  color: #64748b !important;
+/* ─── Gradient Text ──────────────────────── */
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 50%, #db2777 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.bg-slate-950 {
-  background-color: #f1f5f9 !important; /* Main background color */
-}
-.bg-slate-900 {
-  background-color: #f8fafc !important; /* Card backgrounds/toolbars */
-}
-.bg-slate-950\/95 { background-color: rgba(241, 245, 249, 0.95) !important; }
-.bg-slate-950\/90 { background-color: rgba(241, 245, 249, 0.90) !important; }
-.bg-slate-950\/85 { background-color: rgba(241, 245, 249, 0.85) !important; }
-.bg-slate-950\/80 { background-color: rgba(241, 245, 249, 0.80) !important; }
-.bg-slate-950\/75 { background-color: rgba(241, 245, 249, 0.75) !important; }
-.bg-slate-950\/70 { background-color: rgba(255, 255, 255, 0.80) !important; } /* Navbar */
-.bg-slate-950\/65 { background-color: rgba(255, 255, 255, 0.90) !important; }
-.bg-slate-950\/60 { background-color: rgba(255, 255, 255, 0.90) !important; }
-.bg-slate-950\/50 { background-color: rgba(255, 255, 255, 0.95) !important; }
-.bg-slate-950\/40 { background-color: rgba(255, 255, 255, 0.95) !important; }
-.bg-slate-950\/20 { background-color: rgba(241, 245, 249, 0.20) !important; }
-.bg-slate-950\/10 { background-color: rgba(241, 245, 249, 0.10) !important; }
-.bg-slate-950\/5  { background-color: rgba(241, 245, 249, 0.05) !important; }
+/* ─── Primary Button ─────────────────────── */
 
-.bg-slate-900\/95 { background-color: rgba(248, 250, 252, 0.95) !important; }
-.bg-slate-900\/90 { background-color: rgba(248, 250, 252, 0.90) !important; }
-.bg-slate-900\/80 { background-color: rgba(248, 250, 252, 0.80) !important; }
-.bg-slate-900\/50 { background-color: rgba(248, 250, 252, 0.50) !important; }
-.bg-slate-900\/40 { background-color: rgba(248, 250, 252, 0.40) !important; }
-.bg-slate-900\/20 { background-color: rgba(248, 250, 252, 0.20) !important; }
-.bg-slate-900\/10 { background-color: rgba(248, 250, 252, 0.10) !important; }
-
-.border-slate-800 {
-  border-color: #cbd5e1 !important; /* Soft borders */
-}
-.border-slate-900 {
-  border-color: #e2e8f0 !important;
-}
-.border-slate-850 {
-  border-color: #cbd5e1 !important;
-}
-.divide-slate-900 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #cbd5e1 !important;
-}
-.divide-slate-800\/80 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #cbd5e1 !important;
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  color: #ffffff;
+  background-color: var(--primary);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease,
+              box-shadow 0.2s ease,
+              transform 0.15s ease;
+  box-shadow: 0 1px 2px 0 rgba(79, 70, 229, 0.2);
 }
 
-/* Ensure code syntax colors remain high contrast and beautiful on light background */
-.text-emerald-400 {
-  color: #16a34a !important; /* Professional green */
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
-.text-rose-400 {
-  color: #dc2626 !important; /* Professional red */
+
+.btn-primary:active {
+  transform: scale(0.97);
 }
-.text-amber-400 {
-  color: #d97706 !important; /* Professional amber */
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-light), 0 1px 2px 0 rgba(79, 70, 229, 0.2);
 }
-.text-indigo-400 {
-  color: #4f46e5 !important; /* Indigo */
-}
-.text-purple-400 {
-  color: #7c3aed !important; /* Purple */
-}
-.text-pink-400 {
-  color: #db2777 !important; /* Pink */
-}
+
+/* ─── Glow Hover ─────────────────────────── */
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 15px rgba(79, 70, 229, 0.15);
+    box-shadow: 0 0 15px rgba(79, 70, 229, 0.12);
   }
   50% {
-    box-shadow: 0 0 25px rgba(79, 70, 229, 0.35);
+    box-shadow: 0 0 30px rgba(79, 70, 229, 0.28);
   }
 }
 
 .glow-hover:hover {
-  animation: pulse-glow 2s infinite;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ─── Animations ─────────────────────────── */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+
+.slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Staggered animation delays for card grids */
+.slide-up:nth-child(1) { animation-delay: 0ms; }
+.slide-up:nth-child(2) { animation-delay: 60ms; }
+.slide-up:nth-child(3) { animation-delay: 120ms; }
+.slide-up:nth-child(4) { animation-delay: 180ms; }
+.slide-up:nth-child(5) { animation-delay: 240ms; }
+.slide-up:nth-child(6) { animation-delay: 300ms; }
+.slide-up:nth-child(7) { animation-delay: 360ms; }
+.slide-up:nth-child(8) { animation-delay: 420ms; }
+
+/* ─── Scrollbar (Webkit) ─────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ─── Selection ──────────────────────────── */
+
+::selection {
+  background-color: rgba(79, 70, 229, 0.15);
+  color: var(--foreground);
 }

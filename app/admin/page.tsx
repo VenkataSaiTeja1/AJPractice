@@ -1003,52 +1003,52 @@ export default function TeacherAdminDashboard() {
     <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative">
       
       {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Practice portal By VVS</h1>
-          <p className="text-xs text-slate-400 mt-1 font-light">Monitor student scores, curate curriculum exercises, and register student credentials.</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Practice Portal By VVS</h1>
+          <p className="text-xs text-slate-500 mt-1 font-normal">Monitor student scores, curate curriculum exercises, and register student credentials.</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-850 px-5 py-2.5 text-sm font-semibold transition-all shadow-md cursor-pointer"
+            className="flex items-center gap-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-5 py-2.5 text-sm font-semibold transition-all shadow-xs hover:shadow-sm cursor-pointer"
           >
-            <Download className="h-4.5 w-4.5" />
+            <Download className="h-4.5 w-4.5 text-slate-500" />
             Export Gradebook
           </button>
         </div>
       </div>
 
       {/* Tabs Selector Bar */}
-      <div className="flex border-b border-slate-800 gap-4">
+      <div className="flex border-b border-slate-200 gap-6">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'overview' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
+          className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <div className="flex items-center gap-1.5"><LayoutGrid className="h-4 w-4" /> Overview & Feed</div>
         </button>
         <button
           onClick={() => setActiveTab('monitor')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'monitor' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
+          className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'monitor' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <div className="flex items-center gap-1.5"><BarChart2 className="h-4 w-4" /> Progress Monitor</div>
         </button>
         <button
           onClick={() => setActiveTab('students')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'students' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
+          className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'students' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <div className="flex items-center gap-1.5"><Users className="h-4 w-4" /> Student Roster</div>
         </button>
         <button
           onClick={() => setActiveTab('tasks')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'tasks' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
+          className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'tasks' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <div className="flex items-center gap-1.5"><BookOpen className="h-4 w-4" /> Curriculum Manager</div>

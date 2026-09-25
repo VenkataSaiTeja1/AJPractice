@@ -230,37 +230,37 @@ export default function StudentDashboard() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'passed':
-        return <CheckCircle className="h-5 w-5 text-emerald-400" />;
+        return <CheckCircle className="h-5 w-5 text-emerald-500" />;
       case 'failed':
-        return <XCircle className="h-5 w-5 text-rose-400" />;
+        return <XCircle className="h-5 w-5 text-rose-500" />;
       case 'pending':
-        return <Clock className="h-5 w-5 text-amber-400" />;
+        return <Clock className="h-5 w-5 text-amber-500" />;
       default:
-        return <HelpCircle className="h-5 w-5 text-slate-500" />;
+        return <HelpCircle className="h-5 w-5 text-slate-400" />;
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'passed':
-        return <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-500/20">Passed</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">Passed</span>;
       case 'failed':
-        return <span className="inline-flex items-center gap-1 rounded bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-400 border border-rose-500/20">Failed</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 border border-rose-200">Failed</span>;
       case 'pending':
-        return <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 border border-amber-500/20">Pending Review</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200">Pending Review</span>;
       default:
-        return <span className="inline-flex items-center gap-1 rounded bg-slate-800/80 px-2 py-0.5 text-xs font-medium text-slate-400">Unattempted</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500 border border-slate-200">Unattempted</span>;
     }
   };
 
   const getTaskTypeBadge = (type: string) => {
     switch (type) {
       case 'quiz':
-        return <span className="inline-flex items-center gap-1 rounded bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-400 border border-indigo-500/20"><HelpCircle className="h-3 w-3" /> Quiz</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 border border-indigo-200"><HelpCircle className="h-3 w-3" /> Quiz</span>;
       case 'coding':
-        return <span className="inline-flex items-center gap-1 rounded bg-purple-500/10 px-2.5 py-0.5 text-xs font-medium text-purple-400 border border-purple-500/20"><Code className="h-3 w-3" /> Code Sandbox</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700 border border-violet-200"><Code className="h-3 w-3" /> Code Sandbox</span>;
       case 'cloud_lab':
-        return <span className="inline-flex items-center gap-1 rounded bg-pink-500/10 px-2.5 py-0.5 text-xs font-medium text-pink-400 border border-pink-500/20"><Server className="h-3 w-3" /> Cloud Lab</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-0.5 text-xs font-semibold text-pink-700 border border-pink-200"><Server className="h-3 w-3" /> Cloud Lab</span>;
       default:
         return null;
     }
@@ -291,9 +291,11 @@ export default function StudentDashboard() {
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-[75vh]">
-        <div className="text-center space-y-3">
-          <RefreshCw className="h-10 w-10 text-indigo-500 animate-spin mx-auto" />
-          <p className="text-sm text-slate-400">Loading student dashboard...</p>
+        <div className="text-center space-y-4">
+          <div className="h-14 w-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto">
+            <RefreshCw className="h-7 w-7 text-indigo-500 animate-spin" />
+          </div>
+          <p className="text-sm text-slate-500 font-medium">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -302,58 +304,67 @@ export default function StudentDashboard() {
   // Force first-time users to change password
   if (profile?.first_login) {
     return (
-      <div className="fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4">
-        <div className="w-full max-w-md glass-card p-8 border border-indigo-500/20 shadow-2xl relative overflow-hidden">
-          <div className="absolute -top-24 -left-24 h-48 w-48 bg-indigo-500/10 blur-3xl rounded-full" />
+      <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl p-8 border border-slate-200 shadow-xl shadow-slate-200/50 relative overflow-hidden">
+          <div className="absolute -top-24 -left-24 h-48 w-48 bg-indigo-100/60 blur-3xl rounded-full" />
+          <div className="absolute -bottom-20 -right-20 h-40 w-40 bg-violet-100/50 blur-3xl rounded-full" />
           
           <div className="relative space-y-6">
             <div className="flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3 shadow">
-                <Key className="h-6 w-6" />
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-600 mb-4 shadow-sm">
+                <Key className="h-7 w-7" />
               </div>
-              <h2 className="text-xl font-bold text-white">Change Your Password</h2>
-              <p className="text-xs text-slate-400 leading-normal mt-1 max-w-[280px]">
+              <h2 className="text-xl font-bold text-slate-900">Change Your Password</h2>
+              <p className="text-sm text-slate-500 leading-relaxed mt-2 max-w-[300px]">
                 This is your first login. For security reasons, you must update your password before proceeding.
               </p>
             </div>
 
             {passError && (
-              <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-3.5 text-xs text-rose-400">
-                {passError}
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700 flex items-start gap-2">
+                <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{passError}</span>
               </div>
             )}
 
             <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">New Password</label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">New Password</label>
                 <input
                   type="password"
                   required
                   placeholder="At least 5 characters"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full glass-input text-xs"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Confirm Password</label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Confirm Password</label>
                 <input
                   type="password"
                   required
                   placeholder="Re-type password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full glass-input text-xs"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={changingPassword}
-                className="w-full flex items-center justify-center gap-1.5 rounded bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 py-2.5 text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 py-3 text-sm font-bold text-white transition-all shadow-lg shadow-indigo-500/25 cursor-pointer active:scale-[0.98]"
               >
-                {changingPassword ? 'Updating Password...' : 'Save & Continue'}
+                {changingPassword ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Updating Password...
+                  </>
+                ) : (
+                  'Save & Continue'
+                )}
               </button>
             </form>
           </div>
@@ -370,90 +381,138 @@ export default function StudentDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
         {/* Welcome message */}
-        <div className="lg:col-span-2 glass-card p-6 border border-slate-800 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute top-0 right-0 h-32 w-32 bg-indigo-500/5 blur-2xl rounded-full" />
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
-              Welcome back, <span className="text-indigo-400">{profile?.full_name}</span>!
+        <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-50 blur-2xl rounded-full opacity-80" />
+          <div className="absolute bottom-0 left-0 h-28 w-28 bg-violet-50 blur-2xl rounded-full opacity-60" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Online</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
+              Welcome back, <span className="text-indigo-600">{profile?.full_name}</span>!
             </h2>
-            <p className="text-sm text-slate-400 leading-relaxed font-light">
+            <p className="text-sm text-slate-500 leading-relaxed">
               Master Java exercises scheduled by your faculty administrator. Verify outputs inside code environments.
             </p>
           </div>
-          <div className="flex items-center gap-4 mt-6 text-xs text-slate-400">
-            <div>Roll Number: <span className="text-white font-medium">{profile?.roll_number || 'N/A'}</span></div>
-            <div className="h-3 w-px bg-slate-800" />
-            <div>Java Practice Student Portal</div>
+          <div className="relative flex items-center gap-4 mt-6 text-xs text-slate-500 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-slate-400" />
+              Roll Number: <span className="text-slate-800 font-semibold">{profile?.roll_number || 'N/A'}</span>
+            </div>
+            <div className="h-3.5 w-px bg-slate-200" />
+            <div className="text-slate-400">Java Practice Portal</div>
           </div>
         </div>
 
-        {/* Stats card */}
-        <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-          <div className="glass-card p-4 border border-slate-800 flex flex-col justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Passed</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-3xl font-extrabold text-emerald-400">{stats.completed}</span>
-              <span className="text-xs text-slate-400">/ {stats.total}</span>
+        {/* Stats cards */}
+        <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+          {/* Passed */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Passed</span>
+              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+              </div>
             </div>
-            <div className="mt-3 flex items-center gap-1 text-xs text-emerald-500/90 font-medium">
-              <CheckCircle className="h-3.5 w-3.5" /> Checked
+            <div className="flex items-baseline gap-1.5 mt-3">
+              <span className="text-3xl font-extrabold text-emerald-600">{stats.completed}</span>
+              <span className="text-sm text-slate-400 font-medium">/ {stats.total}</span>
             </div>
-          </div>
-
-          <div className="glass-card p-4 border border-slate-800 flex flex-col justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Failed</span>
-            <div className="mt-2">
-              <span className="text-3xl font-extrabold text-rose-400">{stats.failed}</span>
-            </div>
-            <div className="mt-3 flex items-center gap-1 text-xs text-rose-500/90 font-medium">
-              <XCircle className="h-3.5 w-3.5" /> Re-runs allowed
+            <div className="mt-2.5 text-[11px] text-emerald-600/80 font-medium">
+              Tasks cleared
             </div>
           </div>
 
-          <div className="glass-card p-4 border border-slate-800 flex flex-col justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Completion</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-3xl font-extrabold text-indigo-400">{stats.rate}%</span>
+          {/* Failed */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Failed</span>
+              <div className="h-8 w-8 rounded-lg bg-rose-50 flex items-center justify-center">
+                <XCircle className="h-4 w-4 text-rose-500" />
+              </div>
             </div>
-            <div className="w-full bg-slate-900 rounded-full h-1.5 mt-4 overflow-hidden border border-slate-800">
+            <div className="mt-3">
+              <span className="text-3xl font-extrabold text-rose-600">{stats.failed}</span>
+            </div>
+            <div className="mt-2.5 text-[11px] text-rose-600/80 font-medium">
+              Re-runs allowed
+            </div>
+          </div>
+
+          {/* Completion */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Completion</span>
+              <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                <BarChart3 className="h-4 w-4 text-indigo-500" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-0.5 mt-3">
+              <span className="text-3xl font-extrabold text-indigo-600">{stats.rate}</span>
+              <span className="text-lg font-bold text-indigo-400">%</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
               <div 
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full" 
+                className="bg-gradient-to-r from-indigo-500 to-violet-500 h-1.5 rounded-full transition-all duration-700" 
                 style={{ width: `${stats.rate}%` }}
               />
             </div>
           </div>
 
-          <div className="glass-card p-4 border border-slate-800 flex flex-col justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Quiz Grade</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-3xl font-extrabold text-indigo-600">{stats.quizScore.toFixed(1)}</span>
-              <span className="text-xs text-slate-400">/ 10</span>
+          {/* Quiz Grade */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Quiz Grade</span>
+              <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Award className="h-4 w-4 text-amber-500" />
+              </div>
             </div>
-            <div className="mt-3 flex items-center gap-1 text-[10px] text-indigo-500/90 font-semibold uppercase">
-              <Award className="h-3.5 w-3.5" /> Avg - Penalty
+            <div className="flex items-baseline gap-1 mt-3">
+              <span className="text-3xl font-extrabold text-amber-600">{stats.quizScore.toFixed(1)}</span>
+              <span className="text-sm text-slate-400 font-medium">/ 10</span>
+            </div>
+            <div className="mt-2.5 text-[11px] text-amber-600/80 font-semibold uppercase tracking-wide">
+              Avg − Penalty
             </div>
           </div>
 
-          <div className="glass-card p-4 border border-slate-800 flex flex-col justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Coding Grade</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-3xl font-extrabold text-emerald-600">{stats.codingScore.toFixed(1)}</span>
-              <span className="text-xs text-slate-400">/ 10</span>
+          {/* Coding Grade */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Coding Grade</span>
+              <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center">
+                <Code className="h-4 w-4 text-teal-500" />
+              </div>
             </div>
-            <div className="mt-3 flex items-center gap-1 text-[10px] text-emerald-500/90 font-semibold uppercase">
-              <Code className="h-3.5 w-3.5" /> Program Avg
+            <div className="flex items-baseline gap-1 mt-3">
+              <span className="text-3xl font-extrabold text-teal-600">{stats.codingScore.toFixed(1)}</span>
+              <span className="text-sm text-slate-400 font-medium">/ 10</span>
+            </div>
+            <div className="mt-2.5 text-[11px] text-teal-600/80 font-semibold uppercase tracking-wide">
+              Program Avg
             </div>
           </div>
         </div>
       </div>
 
       {/* TODAY'S MANDATORY SCHEDULED TASKS */}
-      <div className="glass-card p-6 border border-indigo-200 relative overflow-hidden shadow-md bg-indigo-50/30">
-        <div className="absolute top-0 right-0 h-32 w-32 bg-indigo-500/5 blur-3xl rounded-full" />
+      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-50/50 blur-3xl rounded-full" />
         
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-2 w-2 rounded-full bg-indigo-600 animate-ping" />
-          <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">Today&apos;s Mandatory Tasks</h3>
+        <div className="relative flex items-center gap-3 mb-5">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 flex items-center justify-center">
+            <Star className="h-5 w-5 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Today&apos;s Mandatory Tasks</h3>
+            <p className="text-xs text-slate-500">Active scheduled exercises you need to complete</p>
+          </div>
+          <div className="ml-auto flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full bg-indigo-500 animate-ping" />
+            <span className="text-xs font-semibold text-indigo-600">{activeMandatory.length} Active</span>
+          </div>
         </div>
 
         {activeMandatory.length > 0 ? (
@@ -467,25 +526,38 @@ export default function StudentDashboard() {
                 <Link
                   key={task.id}
                   href={`/practice/${task.id}`}
-                  className={`p-5 rounded-lg border transition-all flex flex-col justify-between gap-4 cursor-pointer hover:scale-[1.01] ${
+                  className={`group p-5 rounded-xl border transition-all duration-200 flex flex-col justify-between gap-4 cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
                     isPassed 
-                      ? 'border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50' 
-                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                      ? 'border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 hover:shadow-emerald-100/50' 
+                      : 'border-slate-200 bg-slate-50/30 hover:bg-white hover:shadow-slate-200/50'
                   }`}
                 >
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       {getTaskTypeBadge(task.type)}
                       {getStatusBadge(status)}
                     </div>
-                    <h4 className="text-sm sm:text-base font-bold text-slate-900 mt-1 leading-snug">{task.title}</h4>
-                    <p className="text-xs text-slate-600 font-light leading-normal line-clamp-2">{task.description}</p>
+                    <h4 className="text-sm sm:text-base font-bold text-slate-900 mt-1 leading-snug group-hover:text-indigo-700 transition-colors">{task.title}</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{task.description}</p>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1 text-[10px]">
-                    <span className="text-slate-500">Scheduled Until: <strong className="text-indigo-600 font-medium">{endFormatted}</strong></span>
-                    <span className={`font-bold uppercase tracking-wider text-xs ${isPassed ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                      {isPassed ? 'Completed' : 'Practice Now ➔'}
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1 text-[11px]">
+                    <span className="text-slate-500 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Until: <strong className="text-slate-700 font-semibold">{endFormatted}</strong>
+                    </span>
+                    <span className={`font-bold uppercase tracking-wider text-xs flex items-center gap-1 ${isPassed ? 'text-emerald-600' : 'text-indigo-600 group-hover:gap-2 transition-all'}`}>
+                      {isPassed ? (
+                        <>
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Completed
+                        </>
+                      ) : (
+                        <>
+                          Practice Now
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </>
+                      )}
                     </span>
                   </div>
                 </Link>
@@ -493,10 +565,12 @@ export default function StudentDashboard() {
             })}
           </div>
         ) : (
-          <div className="text-center py-6 text-slate-500 space-y-1.5 font-light">
-            <CheckCircle className="h-8 w-8 text-indigo-500/40 mx-auto" />
-            <p className="text-sm font-semibold text-slate-600">All Scheduled Tasks Cleared</p>
-            <p className="text-xs max-w-sm mx-auto text-slate-500">There are no scheduled mandatory exercises active at the moment. Please check back later when your faculty schedules a task.</p>
+          <div className="text-center py-10 space-y-3">
+            <div className="h-14 w-14 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto">
+              <CheckCircle className="h-7 w-7 text-emerald-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-700">All Scheduled Tasks Cleared</p>
+            <p className="text-xs max-w-sm mx-auto text-slate-500 leading-relaxed">There are no scheduled mandatory exercises active at the moment. Please check back later when your faculty schedules a task.</p>
           </div>
         )}
       </div>
