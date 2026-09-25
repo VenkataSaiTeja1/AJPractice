@@ -148,7 +148,7 @@ export default function WorkspaceQuiz({ task, studentId, submissions = [], onSub
     }
   };
 
-  const currentQ = shuffledQuestions[currentIndex];
+  const currentQ: any = shuffledQuestions[currentIndex];
 
   const goNext = () => {
     if (currentIndex < totalCount - 1) setCurrentIndex(currentIndex + 1);
