@@ -241,7 +241,7 @@ export default function WorkspaceQuiz({ task, studentId, submissions = [], onSub
         <div className="glass-card px-5 py-3 border-slate-800">
           <div className="flex items-center gap-1.5 flex-wrap justify-center">
             {shuffledQuestions.map((_: any, idx: number) => {
-              const isAnswered = selectedAnswers[shuffledQuestions[idx].id] !== undefined;
+              const isAnswered = selectedAnswers[(shuffledQuestions[idx] as any).id] !== undefined;
               const isCurrent = idx === currentIndex;
               return (
                 <button
