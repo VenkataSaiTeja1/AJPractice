@@ -62,12 +62,17 @@ export default function StudentDashboard() {
 
       if (tasksError) throw tasksError;
 
-      // Filter tasks by the student's Year of Study and Section (if 2nd Year)
-      const studentYear = userProfile.year || 3;
+      // Filter tasks by the student's Year of Study and Section (1st Year CAI/CSD, 2nd Year, 3rd Year)
+      const roll = (userProfile.roll_number || '').toUpperCase();
+      const isFirstYear = userProfile.year === 1 || roll.startsWith('26FE');
+      const studentYear = isFirstYear ? 1 : (userProfile.year || 3);
+      const studentSection = isFirstYear
+        ? (roll.includes('43') ? 'CAI' : roll.includes('44') ? 'CSD' : (userProfile.section || 'All'))
+        : (userProfile.section || 'All');
+
       const yearTasks = (dbTasks || []).filter(t => {
         if (t.year !== studentYear) return false;
-        if (studentYear === 2) {
-          const studentSection = userProfile.section || 'A';
+        if (studentYear === 1 || studentYear === 2) {
           return t.section === studentSection || t.section === 'All' || !t.section;
         }
         return true;
@@ -393,16 +398,24 @@ export default function StudentDashboard() {
               Welcome back, <span className="text-indigo-600">{profile?.full_name}</span>!
             </h2>
             <p className="text-sm text-slate-500 leading-relaxed">
-              Master Java exercises scheduled by your faculty administrator. Verify outputs inside code environments.
+              {profile?.roll_number?.toUpperCase().startsWith('26FE') || profile?.year === 1
+                ? 'Master C Programming & Data Structures exercises scheduled by your faculty administrator. Verify outputs inside the live compiler.'
+                : 'Master Java exercises scheduled by your faculty administrator. Verify outputs inside code environments.'}
             </p>
           </div>
           <div className="relative flex items-center gap-4 mt-6 text-xs text-slate-500 pt-4 border-t border-slate-100">
             <div className="flex items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5 text-slate-400" />
-              Roll Number: <span className="text-slate-800 font-semibold">{profile?.roll_number || 'N/A'}</span>
+              Roll: <span className="text-slate-800 font-semibold">{profile?.roll_number || 'N/A'}</span>
             </div>
             <div className="h-3.5 w-px bg-slate-200" />
-            <div className="text-slate-400">Java Practice Portal</div>
+            <div className="text-indigo-600 font-semibold">
+              {profile?.roll_number?.toUpperCase().startsWith('26FE') || profile?.year === 1
+                ? `1st Year (${profile?.roll_number?.toUpperCase().includes('43') ? 'CAI' : 'CSD'}) · C & DS`
+                : profile?.year === 2
+                  ? `2nd Year (${profile?.section || 'A'}) · Java`
+                  : '3rd Year · Advanced Java'}
+            </div>
           </div>
         </div>
 

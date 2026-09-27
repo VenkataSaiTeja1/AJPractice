@@ -30,10 +30,10 @@ export default function TeacherAdminDashboard() {
   const [typeFilter, setTypeFilter] = useState('all');
   
   // Year & Section filtration
-  const [rosterYearFilter, setRosterYearFilter] = useState<'all' | '2' | '3'>('all');
-  const [rosterSectionFilter, setRosterSectionFilter] = useState<'all' | 'A' | 'B'>('all');
-  const [monitorYearFilter, setMonitorYearFilter] = useState<'2' | '3'>('3');
-  const [monitorSectionFilter, setMonitorSectionFilter] = useState<'A' | 'B'>('A');
+  const [rosterYearFilter, setRosterYearFilter] = useState<'all' | '1' | '2' | '3'>('all');
+  const [rosterSectionFilter, setRosterSectionFilter] = useState<string>('all');
+  const [monitorYearFilter, setMonitorYearFilter] = useState<'1' | '2' | '3'>('1');
+  const [monitorSectionFilter, setMonitorSectionFilter] = useState<string>('CAI');
 
   // Progress Monitoring tab states
   const [selectedMonitorTaskId, setSelectedMonitorTaskId] = useState<string>('');
@@ -67,8 +67,9 @@ export default function TeacherAdminDashboard() {
   const [taskStarter, setTaskStarter] = useState('');
   const [taskExpected, setTaskExpected] = useState('');
   const [taskCloudUrl, setTaskCloudUrl] = useState('');
-  const [taskYear, setTaskYear] = useState<number>(3); // Target year: 2 or 3
-  const [taskSection, setTaskSection] = useState<string>('All'); // Target section: A, B, or All (for 2nd year)
+  const [taskYear, setTaskYear] = useState<number>(3); // Target year: 1, 2, or 3
+  const [taskSection, setTaskSection] = useState<string>('All'); // Target section: A, B, or All (for 2nd year), CAI/CSD for 1st
+  const [taskLanguage, setTaskLanguage] = useState<'java' | 'c'>('c');
   
   // Timings
   const [taskStartTime, setTaskStartTime] = useState('');
@@ -282,10 +283,13 @@ export default function TeacherAdminDashboard() {
 
   // Set default monitor task whenever the filter year/section shifts or tasks change
   useEffect(() => {
+    const targetYr = Number(monitorYearFilter);
     const yearTasks = tasks.filter(t => {
-      if (t.year !== Number(monitorYearFilter)) return false;
-      if (monitorYearFilter === '2') {
-        return t.section === monitorSectionFilter || t.section === 'All';
+      const tYear = t.metadata?.year || t.year;
+      const tSec = t.metadata?.section || t.section;
+      if (tYear !== targetYr) return false;
+      if (targetYr === 1 || targetYr === 2) {
+        return tSec === monitorSectionFilter || tSec === 'All' || !tSec;
       }
       return true;
     });
@@ -313,12 +317,20 @@ export default function TeacherAdminDashboard() {
     const currentTask = tasks.find(t => t.id === selectedMonitorTaskId);
     if (!currentTask) return;
 
+    const taskYear = currentTask.metadata?.year || currentTask.year;
+    const taskSection = currentTask.metadata?.section || currentTask.section;
+
     // Filter students belonging to the target year and section of this task
     const targetStudents = students.filter(s => {
-      if (s.year !== currentTask.year) return false;
-      if (currentTask.year === 2) {
-        if (currentTask.section === 'A' || currentTask.section === 'B') {
-          return s.section === currentTask.section;
+      const roll = (s.roll_number || '').toUpperCase();
+      const isY1 = s.year === 1 || roll.startsWith('26FE');
+      const sYear = isY1 ? 1 : (s.year || 3);
+      const sSec = isY1 ? (roll.includes('43') ? 'CAI' : 'CSD') : (s.section || 'A');
+
+      if (sYear !== taskYear) return false;
+      if (taskYear === 1 || taskYear === 2) {
+        if (taskSection && taskSection !== 'All') {
+          return sSec === taskSection;
         }
       }
       return true;
@@ -397,15 +409,19 @@ export default function TeacherAdminDashboard() {
       setStudentName(student.full_name);
       setStudentRoll(student.roll_number || '');
       setStudentPassword(student.password);
-      setStudentYear(student.year || 3);
-      setStudentSection(student.section || 'A');
+      const isFirstYear = student.roll_number?.toUpperCase().startsWith('26FE') || student.year === 1;
+      setStudentYear(isFirstYear ? 1 : (student.year || 3));
+      const section = isFirstYear 
+        ? (student.roll_number?.toUpperCase().includes('43') ? 'CAI' : 'CSD') 
+        : (student.section || 'A');
+      setStudentSection(section);
     } else {
       setEditingStudent(null);
       setStudentName('');
       setStudentRoll('');
       setStudentPassword('student123');
-      setStudentYear(3);
-      setStudentSection('A');
+      setStudentYear(1);
+      setStudentSection('CAI');
     }
     setShowStudentModal(true);
   };
@@ -416,18 +432,20 @@ export default function TeacherAdminDashboard() {
 
     try {
       const generatedEmail = `${studentRoll.trim().toLowerCase()}@portal.com`;
+      const studentPayload: any = {
+        full_name: studentName,
+        roll_number: studentRoll.trim(),
+        email: generatedEmail,
+        password: studentPassword,
+        role: 'student',
+        year: studentYear === 1 ? null : studentYear,
+        section: studentYear === 2 ? studentSection : null
+      };
 
       if (editingStudent) {
         const { error } = await supabase
           .from('profiles')
-          .update({
-            full_name: studentName,
-            roll_number: studentRoll.trim(),
-            email: generatedEmail,
-            password: studentPassword,
-            year: studentYear,
-            section: studentYear === 2 ? studentSection : null
-          })
+          .update(studentPayload)
           .eq('id', editingStudent.id);
 
         if (error) throw error;
@@ -435,14 +453,8 @@ export default function TeacherAdminDashboard() {
         const { error } = await supabase
           .from('profiles')
           .insert({
-            email: generatedEmail,
-            password: studentPassword,
-            full_name: studentName,
-            roll_number: studentRoll.trim(),
-            role: 'student',
-            first_login: true,
-            year: studentYear,
-            section: studentYear === 2 ? studentSection : null
+            ...studentPayload,
+            first_login: true
           });
 
         if (error) throw error;
@@ -487,12 +499,14 @@ export default function TeacherAdminDashboard() {
       setTaskStarter(task.starter_code || '');
       setTaskExpected(task.expected_output || '');
       setTaskCloudUrl(task.cloud_ide_url || '');
-      setTaskYear(task.year || 3);
-      setTaskSection(task.section || 'All');
+      const metadata = task.metadata || {};
+      const effYear = metadata.year || task.year || 3;
+      setTaskYear(effYear);
+      setTaskSection(metadata.section || task.section || 'All');
+      setTaskLanguage(metadata.language || (effYear === 1 ? 'c' : 'java'));
       setTaskStartTime(formatIsoToDatetimeLocal(task.start_time || now.toISOString()));
       setTaskEndTime(formatIsoToDatetimeLocal(task.end_time || tomorrow.toISOString()));
       
-      const metadata = task.metadata || {};
       setQuizQuestions(metadata.questions || [
         { id: 'q1', question: '', options: ['', '', '', ''], correctOption: 0 }
       ]);
@@ -504,12 +518,13 @@ export default function TeacherAdminDashboard() {
       setTaskTitle('');
       setTaskDesc('');
       setTaskUnit(1);
-      setTaskType('quiz');
+      setTaskType('coding');
       setTaskStarter('');
       setTaskExpected('');
       setTaskCloudUrl('');
-      setTaskYear(3);
+      setTaskYear(1);
       setTaskSection('All');
+      setTaskLanguage('c');
       setTaskStartTime(formatIsoToDatetimeLocal(now.toISOString()));
       setTaskEndTime(formatIsoToDatetimeLocal(tomorrow.toISOString()));
       setQuizQuestions([
@@ -579,13 +594,13 @@ export default function TeacherAdminDashboard() {
         unit_number: taskUnit,
         type: taskType,
         year: taskYear,
-        section: taskYear === 2 ? taskSection : null,
+        section: (taskYear === 1 || taskYear === 2) ? taskSection : null,
         start_time: new Date(taskStartTime).toISOString(),
         end_time: new Date(taskEndTime).toISOString()
       };
 
       if (taskType === 'quiz') {
-        payload.metadata = { questions: quizQuestions };
+        payload.metadata = { questions: quizQuestions, year: taskYear, section: taskSection };
         payload.starter_code = null;
         payload.expected_output = null;
         payload.cloud_ide_url = null;
@@ -593,28 +608,33 @@ export default function TeacherAdminDashboard() {
         payload.starter_code = taskStarter;
         payload.expected_output = codingTestCases.find(tc => !tc.isHidden)?.expected || '';
         payload.cloud_ide_url = null;
-        payload.metadata = { testCases: codingTestCases };
+        payload.metadata = { 
+          testCases: codingTestCases,
+          language: taskYear === 1 ? 'c' : taskLanguage,
+          year: taskYear,
+          section: taskSection
+        };
       } else if (taskType === 'cloud_lab') {
         payload.starter_code = '// Paste repository or deploy URL link here';
         payload.cloud_ide_url = taskCloudUrl;
         payload.expected_output = null;
-        payload.metadata = {};
+        payload.metadata = { year: taskYear, section: taskSection };
       }
 
-      if (editingTask) {
-        const { error } = await supabase
-          .from('tasks')
-          .update(payload)
-          .eq('id', editingTask.id);
+      let saveResult = editingTask
+        ? await supabase.from('tasks').update(payload).eq('id', editingTask.id)
+        : await supabase.from('tasks').insert(payload);
 
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('tasks')
-          .insert(payload);
-
-        if (error) throw error;
+      // Graceful fallback for tasks_year_check / tasks_section_check if constraint not yet updated in Postgres
+      if (saveResult.error && taskYear === 1 && (saveResult.error.message?.includes('tasks_year_check') || saveResult.error.message?.includes('tasks_section_check'))) {
+        payload.year = 2;
+        payload.section = null;
+        saveResult = editingTask
+          ? await supabase.from('tasks').update(payload).eq('id', editingTask.id)
+          : await supabase.from('tasks').insert(payload);
       }
+
+      if (saveResult.error) throw saveResult.error;
 
       setShowTaskModal(false);
       fetchAdminData();
@@ -1285,55 +1305,77 @@ export default function TeacherAdminDashboard() {
 
           {/* Year and Task Selection Row */}
           <div className={`grid grid-cols-1 gap-4 ${monitorYearFilter === '2' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Year of Study</label>
-              <select
-                value={monitorYearFilter}
-                onChange={(e) => {
-                  setMonitorYearFilter(e.target.value as any);
-                }}
-                className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
-              >
-                <option value="2">2nd Year (Java)</option>
-                <option value="3">3rd Year (Advanced Java)</option>
-              </select>
-            </div>
-
-            {monitorYearFilter === '2' && (
-              <div className="space-y-1.5 animate-fadeIn">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Section</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Year of Study</label>
                 <select
-                  value={monitorSectionFilter}
-                  onChange={(e) => setMonitorSectionFilter(e.target.value as any)}
+                  value={monitorYearFilter}
+                  onChange={(e) => {
+                    const val = e.target.value as any;
+                    setMonitorYearFilter(val);
+                    if (val === '1') setMonitorSectionFilter('CAI');
+                    else if (val === '2') setMonitorSectionFilter('A');
+                  }}
                   className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
                 >
-                  <option value="A">Section A</option>
-                  <option value="B">Section B</option>
+                  <option value="1">1st Year (C & DS)</option>
+                  <option value="2">2nd Year (Java)</option>
+                  <option value="3">3rd Year (Advanced Java)</option>
                 </select>
               </div>
-            )}
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected Practice Exercise</label>
-              <select
-                value={selectedMonitorTaskId}
-                onChange={(e) => setSelectedMonitorTaskId(e.target.value)}
-                className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
-              >
-                {tasks.filter(t => {
-                  if (t.year !== Number(monitorYearFilter)) return false;
-                  if (monitorYearFilter === '2') {
-                    return t.section === monitorSectionFilter || t.section === 'All';
-                  }
-                  return true;
-                }).length > 0 ? (
-                  tasks.filter(t => {
-                    if (t.year !== Number(monitorYearFilter)) return false;
-                    if (monitorYearFilter === '2') {
-                      return t.section === monitorSectionFilter || t.section === 'All';
+              {monitorYearFilter === '1' && (
+                <div className="space-y-1.5 animate-fadeIn">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Branch / Section</label>
+                  <select
+                    value={monitorSectionFilter}
+                    onChange={(e) => setMonitorSectionFilter(e.target.value)}
+                    className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                  >
+                    <option value="CAI">CAI Branch</option>
+                    <option value="CSD">CSD Branch</option>
+                  </select>
+                </div>
+              )}
+
+              {monitorYearFilter === '2' && (
+                <div className="space-y-1.5 animate-fadeIn">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Section</label>
+                  <select
+                    value={monitorSectionFilter}
+                    onChange={(e) => setMonitorSectionFilter(e.target.value)}
+                    className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                  >
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected Practice Exercise</label>
+                <select
+                  value={selectedMonitorTaskId}
+                  onChange={(e) => setSelectedMonitorTaskId(e.target.value)}
+                  className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                >
+                  {tasks.filter(t => {
+                    const tYear = t.metadata?.year || t.year;
+                    const tSec = t.metadata?.section || t.section;
+                    if (tYear !== Number(monitorYearFilter)) return false;
+                    if (monitorYearFilter === '1' || monitorYearFilter === '2') {
+                      return tSec === monitorSectionFilter || tSec === 'All' || !tSec;
                     }
                     return true;
-                  }).map(t => (
+                  }).length > 0 ? (
+                    tasks.filter(t => {
+                      const tYear = t.metadata?.year || t.year;
+                      const tSec = t.metadata?.section || t.section;
+                      if (tYear !== Number(monitorYearFilter)) return false;
+                      if (monitorYearFilter === '1' || monitorYearFilter === '2') {
+                        return tSec === monitorSectionFilter || tSec === 'All' || !tSec;
+                      }
+                      return true;
+                    }).map(t => (
                     <option key={t.id} value={t.id}>
                       {t.title} ({t.type})
                     </option>
@@ -1544,21 +1586,36 @@ export default function TeacherAdminDashboard() {
                   value={rosterYearFilter}
                   onChange={(e) => {
                     setRosterYearFilter(e.target.value as any);
-                    if (e.target.value !== '2') setRosterSectionFilter('all');
+                    setRosterSectionFilter('all');
                   }}
-                  className="glass-input text-xs py-2 bg-slate-950 text-slate-300 cursor-pointer min-w-[130px]"
+                  className="glass-input text-xs py-2 bg-slate-950 text-slate-300 cursor-pointer min-w-[140px]"
                 >
                   <option value="all">All Years</option>
-                  <option value="2">2nd Year</option>
-                  <option value="3">3rd Year</option>
+                  <option value="1">1st Year (C & DS)</option>
+                  <option value="2">2nd Year (Java)</option>
+                  <option value="3">3rd Year (Advanced Java)</option>
                 </select>
               </div>
+
+              {rosterYearFilter === '1' && (
+                <div className="relative animate-fadeIn">
+                  <select
+                    value={rosterSectionFilter}
+                    onChange={(e) => setRosterSectionFilter(e.target.value)}
+                    className="glass-input text-xs py-2 bg-slate-950 text-slate-300 cursor-pointer min-w-[110px]"
+                  >
+                    <option value="all">All Branches</option>
+                    <option value="CAI">CAI</option>
+                    <option value="CSD">CSD</option>
+                  </select>
+                </div>
+              )}
 
               {rosterYearFilter === '2' && (
                 <div className="relative animate-fadeIn">
                   <select
                     value={rosterSectionFilter}
-                    onChange={(e) => setRosterSectionFilter(e.target.value as any)}
+                    onChange={(e) => setRosterSectionFilter(e.target.value)}
                     className="glass-input text-xs py-2 bg-slate-950 text-slate-300 cursor-pointer min-w-[110px]"
                   >
                     <option value="all">All Sections</option>
@@ -1604,17 +1661,29 @@ export default function TeacherAdminDashboard() {
               <tbody className="divide-y divide-slate-800/80 bg-slate-950/20">
                 {(() => {
                   const filtered = students.filter(s => {
-                    const matchYear = rosterYearFilter === 'all' || String(s.year) === rosterYearFilter;
-                    const matchSection = rosterYearFilter !== '2' || rosterSectionFilter === 'all' || s.section === rosterSectionFilter;
+                    const roll = (s.roll_number || '').toUpperCase();
+                    const isY1 = s.year === 1 || roll.startsWith('26FE');
+                    const sYear = isY1 ? '1' : String(s.year || '3');
+                    const sSec = isY1 ? (roll.includes('43') ? 'CAI' : 'CSD') : (s.section || 'A');
+
+                    const matchYear = rosterYearFilter === 'all' || sYear === rosterYearFilter;
+                    const matchSection = (rosterYearFilter !== '1' && rosterYearFilter !== '2') || rosterSectionFilter === 'all' || sSec === rosterSectionFilter;
                     return matchYear && matchSection;
                   });
 
                   const getStudentScores = (student: any) => {
-                    const studentYear = student.year || 3;
+                    const isY1 = student.year === 1 || (student.roll_number || '').toUpperCase().startsWith('26FE');
+                    const studentYear = isY1 ? 1 : (student.year || 3);
+                    const studentSection = isY1 
+                      ? ((student.roll_number || '').toUpperCase().includes('43') ? 'CAI' : 'CSD')
+                      : (student.section || 'A');
+
                     const studentTasks = tasks.filter(t => {
-                      if (t.year !== studentYear) return false;
-                      if (studentYear === 2) {
-                        return t.section === student.section || t.section === 'All' || !t.section;
+                      const tYear = t.metadata?.year || t.year;
+                      const tSec = t.metadata?.section || t.section;
+                      if (tYear !== studentYear) return false;
+                      if (studentYear === 1 || studentYear === 2) {
+                        return tSec === studentSection || tSec === 'All' || !tSec;
                       }
                       return true;
                     });
@@ -1663,7 +1732,7 @@ export default function TeacherAdminDashboard() {
                     const quizScore = Math.max(Number(student.overall_quiz_score || 0), calculatedQuizScore);
                     const codingScore = Math.max(Number(student.overall_coding_score || 0), calculatedCodingScore);
 
-                    return { quizScore, codingScore };
+                    return { quizScore, codingScore, isY1, studentSection };
                   };
 
                   return filtered.length > 0 ? (
@@ -1674,7 +1743,11 @@ export default function TeacherAdminDashboard() {
                           <td className="px-4 py-3 font-mono font-semibold text-slate-200">{s.roll_number}</td>
                           <td className="px-4 py-3 font-semibold text-white">{s.full_name}</td>
                           <td className="px-4 py-3 font-semibold text-indigo-400">
-                            {s.year === 2 ? `2nd Year (Sec ${s.section || 'A'})` : '3rd Year (No Sec)'}
+                            {scores.isY1 
+                              ? `1st Year (${scores.studentSection})` 
+                              : s.year === 2 
+                                ? `2nd Year (Sec ${s.section || 'A'})` 
+                                : '3rd Year (No Sec)'}
                           </td>
                           <td className="px-4 py-3 text-center font-mono font-bold text-emerald-400">
                             {scores.quizScore.toFixed(1)}/10
@@ -1753,9 +1826,20 @@ export default function TeacherAdminDashboard() {
                       <td className="px-4 py-3 font-semibold text-slate-200">Group {t.unit_number}</td>
                       <td className="px-4 py-3 font-semibold text-white">{t.title}</td>
                       <td className="px-4 py-3 font-semibold text-indigo-400">
-                        {t.year === 2 ? `2nd Year (Sec ${t.section || 'All'})` : '3rd Year (AJ)'}
+                        {(t.metadata?.year === 1 || t.year === 1)
+                          ? `1st Year (${t.metadata?.section || t.section || 'CAI & CSD'})`
+                          : t.year === 2
+                          ? `2nd Year (Sec ${t.metadata?.section || t.section || 'All'})`
+                          : '3rd Year (AJ)'}
                       </td>
-                      <td className="px-4 py-3 capitalize">{t.type.replace('_', ' ')}</td>
+                      <td className="px-4 py-3 capitalize">
+                        {t.type.replace('_', ' ')}
+                        {t.type === 'coding' && (
+                          <span className="ml-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 uppercase">
+                            {t.metadata?.language || (t.year === 1 || t.metadata?.year === 1 ? 'c' : 'java')}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-slate-400 font-light text-[11px] leading-relaxed">
                         {t.start_time ? (
                           <>
@@ -1834,16 +1918,31 @@ export default function TeacherAdminDashboard() {
                     onChange={(e) => {
                       const yr = Number(e.target.value);
                       setStudentYear(yr);
-                      if (yr === 3) setStudentSection('A');
+                      if (yr === 1) setStudentSection('CAI');
+                      else if (yr === 2) setStudentSection('A');
+                      else setStudentSection('All');
                     }}
                     className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
                   >
+                    <option value={1}>1st Year (C & DS)</option>
                     <option value={2}>2nd Year (Java)</option>
                     <option value={3}>3rd Year (AJ)</option>
                   </select>
                 </div>
 
-                {studentYear === 2 ? (
+                {studentYear === 1 ? (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Branch</label>
+                    <select
+                      value={studentSection}
+                      onChange={(e) => setStudentSection(e.target.value)}
+                      className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                    >
+                      <option value="CAI">CAI (Artificial Intelligence)</option>
+                      <option value="CSD">CSD (Data Science)</option>
+                    </select>
+                  </div>
+                ) : studentYear === 2 ? (
                   <div className="space-y-1.5 animate-fadeIn">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Section</label>
                     <select
@@ -1869,7 +1968,7 @@ export default function TeacherAdminDashboard() {
                 )}
               </div>
 
-              {studentYear === 2 && (
+              {(studentYear === 1 || studentYear === 2) && (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account Password</label>
                   <input
@@ -1916,13 +2015,13 @@ export default function TeacherAdminDashboard() {
             </div>
 
             <div className="space-y-4">
-              <div className={`grid grid-cols-1 gap-4 ${taskYear === 2 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
-                <div className={`space-y-1.5 ${taskYear === 2 ? 'md:col-span-2' : 'md:col-span-2'}`}>
+              <div className={`grid grid-cols-1 gap-4 ${(taskYear === 1 || taskYear === 2) ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+                <div className={`space-y-1.5 ${(taskYear === 1 || taskYear === 2) ? 'md:col-span-2' : 'md:col-span-2'}`}>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Exercise Title</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Servlet Request Mapping"
+                    placeholder={taskYear === 1 ? "e.g. Doubly Linked List Operations" : "e.g. Servlet Request Mapping"}
                     value={taskTitle}
                     onChange={(e) => setTaskTitle(e.target.value)}
                     className="w-full glass-input text-xs"
@@ -1936,14 +2035,39 @@ export default function TeacherAdminDashboard() {
                     onChange={(e) => {
                       const yr = Number(e.target.value);
                       setTaskYear(yr);
-                      if (yr === 3) setTaskSection('All');
+                      if (yr === 1) {
+                        setTaskSection('All');
+                        setTaskLanguage('c');
+                      } else if (yr === 2) {
+                        setTaskSection('All');
+                        setTaskLanguage('java');
+                      } else {
+                        setTaskSection('All');
+                        setTaskLanguage('java');
+                      }
                     }}
                     className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
                   >
+                    <option value={1}>1st Year (C & DS)</option>
                     <option value={2}>2nd Year (Java)</option>
                     <option value={3}>3rd Year (Advanced Java)</option>
                   </select>
                 </div>
+
+                {taskYear === 1 && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Branch</label>
+                    <select
+                      value={taskSection}
+                      onChange={(e) => setTaskSection(e.target.value)}
+                      className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                    >
+                      <option value="All">All Branches (CAI & CSD)</option>
+                      <option value="CAI">CAI Only</option>
+                      <option value="CSD">CSD Only</option>
+                    </select>
+                  </div>
+                )}
 
                 {taskYear === 2 && (
                   <div className="space-y-1.5 animate-fadeIn">
@@ -1961,7 +2085,7 @@ export default function TeacherAdminDashboard() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`grid grid-cols-1 ${taskType === 'coding' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ordering Index (1 to 5)</label>
                   <input
@@ -1987,6 +2111,20 @@ export default function TeacherAdminDashboard() {
                     <option value="cloud_lab">Cloud IDE Lab</option>
                   </select>
                 </div>
+
+                {taskType === 'coding' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Compiler Language</label>
+                    <select
+                      value={taskLanguage}
+                      onChange={(e) => setTaskLanguage(e.target.value as 'java' | 'c')}
+                      className="w-full glass-input text-xs bg-slate-950 text-slate-300 cursor-pointer"
+                    >
+                      <option value="c">C Language (GCC)</option>
+                      <option value="java">Java (JDK 17)</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -2110,10 +2248,12 @@ export default function TeacherAdminDashboard() {
               {taskType === 'coding' && (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Starter Java Code</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Starter {taskLanguage === 'c' ? 'C' : 'Java'} Code
+                    </label>
                     <textarea
                       rows={4}
-                      placeholder="public class Main { ..."
+                      placeholder={taskLanguage === 'c' ? '#include <stdio.h>\n\nint main() {\n    // your code\n    return 0;\n}' : 'public class Main {\n    public static void main(String[] args) {\n        // your code\n    }\n}'}
                       value={taskStarter}
                       onChange={(e) => setTaskStarter(e.target.value)}
                       className="w-full glass-input font-mono text-[11px] resize-none leading-normal"

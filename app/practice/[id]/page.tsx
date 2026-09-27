@@ -47,12 +47,17 @@ export default function PracticePage({ params }: PageProps) {
       if (taskError || !dbTask) throw new Error('Task not found');
 
       // Enforce year and section security boundaries
-      const studentYear = userProfile.year || 3;
+      const roll = (userProfile.roll_number || '').toUpperCase();
+      const isFirstYear = userProfile.year === 1 || roll.startsWith('26FE');
+      const studentYear = isFirstYear ? 1 : (userProfile.year || 3);
+      const studentSection = isFirstYear
+        ? (roll.includes('43') ? 'CAI' : roll.includes('44') ? 'CSD' : (userProfile.section || 'All'))
+        : (userProfile.section || 'All');
+
       if (dbTask.year !== studentYear) {
         throw new Error('Access denied: target student year mismatch.');
       }
-      if (studentYear === 2) {
-        const studentSection = userProfile.section || 'A';
+      if (studentYear === 1 || studentYear === 2) {
         if (dbTask.section && dbTask.section !== 'All' && dbTask.section !== studentSection) {
           throw new Error('Access denied: target student section mismatch.');
         }

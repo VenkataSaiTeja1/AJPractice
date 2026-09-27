@@ -49,9 +49,11 @@ export async function POST(req: Request) {
     // Handle Sandbox Runs (Console Execution only)
     if (isRun) {
       try {
+        const isCLanguage = task.metadata?.language === 'c' || task.year === 1;
+        const endpoint = isCLanguage ? 'run-c' : 'run-java';
         const compilerUrl = process.env.COMPILER_SERVICE_URL 
-          ? `${process.env.COMPILER_SERVICE_URL.replace(/\/$/, '')}/api/run-java`
-          : `${new URL(req.url).origin}/api/run-java`;
+          ? `${process.env.COMPILER_SERVICE_URL.replace(/\/$/, '')}/api/${endpoint}`
+          : `${new URL(req.url).origin}/api/${endpoint}`;
 
         const runResponse = await fetch(compilerUrl, {
           method: 'POST',
@@ -135,9 +137,11 @@ export async function POST(req: Request) {
         const metadata = task.metadata || {};
         const testCases = metadata.testCases || [];
         
+        const isCLanguage = task.metadata?.language === 'c' || task.year === 1;
+        const endpoint = isCLanguage ? 'run-c' : 'run-java';
         const compilerUrl = process.env.COMPILER_SERVICE_URL 
-          ? `${process.env.COMPILER_SERVICE_URL.replace(/\/$/, '')}/api/run-java`
-          : `${new URL(req.url).origin}/api/run-java`;
+          ? `${process.env.COMPILER_SERVICE_URL.replace(/\/$/, '')}/api/${endpoint}`
+          : `${new URL(req.url).origin}/api/${endpoint}`;
 
         let allPassed = true;
         let gradingFeedback = '';
@@ -308,11 +312,17 @@ async function updateStudentOverallGrades(studentId: string) {
   }
 
   // 3. Filter tasks assigned to this student
-  const studentYear = profile.year || 3;
+  const roll = profile.roll_number?.toUpperCase() || '';
+  const isFirstYear = profile.year === 1 || roll.startsWith('26FE');
+  const studentYear = isFirstYear ? 1 : (profile.year || 3);
+  const studentSection = isFirstYear 
+    ? (roll.includes('43') ? 'CAI' : roll.includes('44') ? 'CSD' : (profile.section || 'All'))
+    : (profile.section || 'All');
+
   const studentTasks = (allTasks || []).filter(t => {
     if (t.year !== studentYear) return false;
-    if (studentYear === 2) {
-      return t.section === profile.section || t.section === 'All' || !t.section;
+    if (studentYear === 1 || studentYear === 2) {
+      return t.section === studentSection || t.section === 'All' || !t.section;
     }
     return true;
   });
