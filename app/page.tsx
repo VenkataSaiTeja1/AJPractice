@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { GraduationCap, ArrowRight, Code, Cpu, Database, Server } from 'lucide-react';
+import ThemeToggle from '@/components/theme-toggle';
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
@@ -41,16 +42,19 @@ export default function Home() {
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-bold text-slate-900 tracking-tight">
-              Practice Portal <span className="text-indigo-500 font-medium">By VVS</span>
+              Portal <span className="text-indigo-500 font-medium">By VVS</span>
             </span>
           </div>
-          <nav className="hidden sm:flex items-center gap-6 text-sm font-medium text-slate-500">
+          <nav className="flex items-center gap-3 sm:gap-6 text-sm font-medium text-slate-500">
+            <ThemeToggle />
+            <div className="hidden sm:flex items-center gap-6">
             <a href="#features" className="hover:text-indigo-600 transition-colors">Features</a>
-            <a href="#tech" className="hover:text-indigo-600 transition-colors">Tech Stack</a>
+            <a href="#learning-tools" className="hover:text-indigo-600 transition-colors">Learning Tools</a>
+            </div>
             {!loading && !session && (
               <Link
                 href="/login"
-                className="ml-2 px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors font-semibold text-sm"
+                className="ml-1 sm:ml-2 px-3 sm:px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors font-semibold text-sm"
               >
                 Sign In
               </Link>
@@ -67,21 +71,21 @@ export default function Home() {
           <div className="flex justify-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-xs font-semibold uppercase tracking-wider">
               <GraduationCap className="h-3.5 w-3.5" />
-              CS Hybrid Practice Platform
+              Student Programming Practice Platform
             </div>
           </div>
 
           {/* Headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1] max-w-4xl mx-auto">
-            Master Advanced Java with{' '}
+            Learn by practicing and building{' '}
             <span className="bg-gradient-to-r from-indigo-600 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              Live Compilation & Sandbox Labs
+              real programming skills
             </span>
           </h1>
 
           {/* Subheading */}
           <p className="mt-6 text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed font-normal">
-            Practice JDBC database operations, J2EE/Servlet mechanics, and modern Spring MVC web architecture in an interactive, cloud-driven playground.
+            Work through scheduled coding exercises, quizzes, compiler practice, and cloud labs across your curriculum, with feedback and progress tracking.
           </p>
 
           {/* CTA Buttons */}
@@ -121,10 +125,10 @@ export default function Home() {
           <div className="text-center mb-14">
             <p className="text-sm font-semibold uppercase tracking-wider text-indigo-600 mb-2">Platform Modules</p>
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
-              Everything you need to practice Java
+              Practice tools for every step of learning
             </h2>
             <p className="mt-3 text-slate-500 max-w-xl mx-auto">
-              Three integrated modules designed to build deep, practical understanding of enterprise Java technologies.
+              Build confidence with interactive quizzes, coding exercises, instant compiler feedback, and cloud-based project work.
             </p>
           </div>
 
@@ -138,7 +142,7 @@ export default function Home() {
                 Module A: Quizzes & Debugging
               </h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Interactive matching tasks, servlet lifecycle checks, and &ldquo;Find the bug&rdquo; Java snippets with immediate feedback.
+                Strengthen problem-solving with interactive quizzes, debugging challenges, and code-reading exercises.
               </p>
               <div className="mt-5 flex items-center text-sm font-semibold text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Explore module <ArrowRight className="h-4 w-4 ml-1" />
@@ -154,7 +158,7 @@ export default function Home() {
                 Module B: Sandbox Execution
               </h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Live compiler sandbox for coding JDBC statements, batch updates, and Spring beans with zero client setup.
+                Write and run programs in the browser, then use immediate feedback to test and improve your solutions.
               </p>
               <div className="mt-5 flex items-center text-sm font-semibold text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Explore module <ArrowRight className="h-4 w-4 ml-1" />
@@ -170,7 +174,7 @@ export default function Home() {
                 Module C: Cloud IDE Containers
               </h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                GitHub Codespaces/Gitpod links for complex Tomcat servlets, web server settings, and JSTL views.
+                Open a cloud development environment for larger assignments and submit project links for faculty review.
               </p>
               <div className="mt-5 flex items-center text-sm font-semibold text-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Explore module <ArrowRight className="h-4 w-4 ml-1" />
@@ -180,23 +184,23 @@ export default function Home() {
         </section>
 
         {/* ─── Tech Stack Footer ─── */}
-        <footer id="tech" className="relative z-10 border-t border-slate-100 bg-slate-50/80">
+        <footer id="learning-tools" className="relative z-10 border-t border-slate-100 bg-slate-50/80">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 text-center mb-6">
-              Supported Technologies
+              Learning Tools
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 text-sm font-medium text-slate-600 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-300">
                 <Database className="h-4 w-4 text-indigo-500" />
-                JDBC & MySQL
+                C & Java Practice
               </div>
               <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 text-sm font-medium text-slate-600 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300">
                 <Server className="h-4 w-4 text-purple-500" />
-                Tomcat J2EE
+                Live Compiler
               </div>
               <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 text-sm font-medium text-slate-600 shadow-sm hover:shadow-md hover:border-pink-200 transition-all duration-300">
                 <Cpu className="h-4 w-4 text-pink-500" />
-                Spring Framework
+                Cloud Labs
               </div>
             </div>
 
@@ -205,7 +209,7 @@ export default function Home() {
                 <div className="h-6 w-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                   <GraduationCap className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="font-medium text-slate-500">Practice Portal By VVS</span>
+                <span className="font-medium text-slate-500">Portal By VVS</span>
               </div>
               <p className="text-xs text-slate-400">
                 &copy; {new Date().getFullYear()} All rights reserved. Built for CS students.

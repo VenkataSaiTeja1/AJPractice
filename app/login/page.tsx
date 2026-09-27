@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginStudent, loginFaculty, getCurrentSession } from '@/lib/supabase';
 import { GraduationCap, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import ThemeToggle from '@/components/theme-toggle';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -67,6 +68,9 @@ export default function LoginPage() {
 
           {/* Subtle top accent bar */}
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500" />
+          <div className="absolute right-4 top-4 z-10">
+            <ThemeToggle />
+          </div>
 
           {/* Header / Branding */}
           <div className="flex flex-col items-center justify-center text-center mb-8 pt-2">
@@ -74,7 +78,7 @@ export default function LoginPage() {
               <GraduationCap className="h-8 w-8" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Practice Portal By VVS
+              Portal By VVS
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
               Access scheduled curriculum exercises
@@ -222,7 +226,7 @@ export default function LoginPage() {
 
         {/* Bottom attribution */}
         <p className="text-center text-[10px] text-slate-400 dark:text-slate-600 mt-6">
-          Advanced Java Practice Portal &middot; Secure Login
+          Portal By VVS &middot; Secure Login
         </p>
       </div>
     </div>

@@ -260,7 +260,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
       <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full">
         
         {/* Code Editor Column */}
-        <div className={`flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative min-h-[500px] sm:min-h-[650px] w-full lg:w-1/2 lg:min-w-[30%] lg:max-w-[70%] lg:resize-x ${
+        <div className={`flex h-[72vh] max-h-[820px] min-h-[560px] flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative w-full lg:w-1/2 lg:min-w-[30%] lg:max-w-[70%] lg:resize-x ${
           mobileTab === 'editor' ? 'flex' : 'hidden lg:flex'
         }`}>
           

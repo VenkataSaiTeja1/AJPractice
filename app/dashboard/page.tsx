@@ -403,13 +403,13 @@ export default function StudentDashboard() {
                 : 'Master Java exercises scheduled by your faculty administrator. Verify outputs inside code environments.'}
             </p>
           </div>
-          <div className="relative flex items-center gap-4 mt-6 text-xs text-slate-500 dark:text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="relative flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 text-xs text-slate-500 dark:text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
               Roll: <span className="text-slate-800 dark:text-slate-200 font-semibold">{profile?.roll_number || 'N/A'}</span>
             </div>
             <div className="h-3.5 w-px bg-slate-200 dark:bg-slate-700" />
-            <div className="text-indigo-600 dark:text-indigo-400 font-semibold">
+            <div className="min-w-0 text-indigo-600 dark:text-indigo-400 font-semibold break-words">
               {profile?.roll_number?.toUpperCase().startsWith('26FE') || profile?.year === 1
                 ? `1st Year (${profile?.roll_number?.toUpperCase().includes('43') ? 'CAI' : 'CSD'}) · C & DS`
                 : profile?.year === 2
@@ -514,15 +514,15 @@ export default function StudentDashboard() {
       <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-50/50 dark:bg-indigo-950/20 blur-3xl rounded-full" />
         
-        <div className="relative flex items-center gap-3 mb-5">
+        <div className="relative flex flex-wrap items-center gap-3 mb-5">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
             <Star className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Today&apos;s Mandatory Tasks</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">Active scheduled exercises you need to complete</p>
           </div>
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap">
             <div className="h-2 w-2 rounded-full bg-indigo-500 animate-ping" />
             <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{activeMandatory.length} Active</span>
           </div>

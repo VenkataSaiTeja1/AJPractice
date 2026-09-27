@@ -31,7 +31,7 @@ export default function Navbar() {
   };
 
   // Do not show navbar on login page
-  if (pathname === '/login') return null;
+  if (pathname === '/' || pathname === '/login') return null;
 
   // Format student branch and year for display
   const getCohortLabel = () => {
@@ -62,7 +62,7 @@ export default function Navbar() {
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
             <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-              Practice Portal <span className="font-medium text-indigo-500">By VVS</span>
+              Portal <span className="hidden font-medium text-indigo-500 sm:inline">By VVS</span>
             </span>
           </Link>
 
@@ -80,7 +80,7 @@ export default function Navbar() {
                   }`}
                 >
                   <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden xs:inline">Dashboard</span>
+                  <span className="hidden sm:inline">Dashboard</span>
                 </Link>
 
                 {/* Faculty Control Panel Link */}
@@ -122,7 +122,7 @@ export default function Navbar() {
                   {/* Logout Button */}
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 shadow-xs transition-all duration-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 cursor-pointer"
+                    className="flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 shadow-xs transition-all duration-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 cursor-pointer"
                     title="Sign Out"
                   >
                     <LogOut className="h-3.5 w-3.5" />

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Practice Portal By VVS | Advanced Java Lab",
-  description: "Interactive practice platform for Core & Advanced Java programming: live compiler sandboxes, randomized quizzes, and cloud lab environments.",
+  title: "Portal By VVS | Programming Practice",
+  description: "Interactive student practice with scheduled coding exercises, quizzes, compiler workspaces, and cloud labs.",
 };
 
 export default function RootLayout({

@@ -8,18 +8,18 @@
 
 :root {
   /* Light Theme Tokens */
-  --background: #f1f5fb;
-  --foreground: #0f172a;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-light: rgba(79, 70, 229, 0.10);
-  --secondary: #e8eef7;
-  --border: #dde3ed;
-  --border-hover: #c7d0e0;
+  --background: #f4f7f7;
+  --foreground: #17262f;
+  --primary: #0f766e;
+  --primary-hover: #0d625b;
+  --primary-light: rgba(15, 118, 110, 0.12);
+  --secondary: #e9f0ef;
+  --border: #dbe5e3;
+  --border-hover: #c1d1ce;
   --card-bg: #ffffff;
-  --card-bg-alt: #f8faff;
-  --muted: #64748b;
-  --muted-bg: #f1f5f9;
+  --card-bg-alt: #f8fbfa;
+  --muted: #5d6e78;
+  --muted-bg: #edf2f1;
   --success: #16a34a;
   --success-bg: #f0fdf4;
   --error: #dc2626;
@@ -38,18 +38,18 @@
 
 .dark {
   /* Dark Theme Tokens — Thrilling deep space palette */
-  --background: #060a12;
-  --foreground: #e8edf5;
-  --primary: #818cf8;
-  --primary-hover: #a5b4fc;
-  --primary-light: rgba(129, 140, 248, 0.18);
-  --secondary: #0f1729;
-  --border: #1e2d45;
-  --border-hover: #2d4060;
-  --card-bg: #0d1525;
-  --card-bg-alt: #111e33;
-  --muted: #8ca0bc;
-  --muted-bg: #0f1729;
+  --background: #0d1518;
+  --foreground: #e7f1ef;
+  --primary: #56c6b4;
+  --primary-hover: #7ad9c9;
+  --primary-light: rgba(86, 198, 180, 0.18);
+  --secondary: #142124;
+  --border: #263638;
+  --border-hover: #3a4d4e;
+  --card-bg: #121e20;
+  --card-bg-alt: #172628;
+  --muted: #a0b2b1;
+  --muted-bg: #142124;
   --success: #34d399;
   --success-bg: #052e16;
   --error: #f87171;
@@ -220,7 +220,11 @@ body {
   50%       { box-shadow: 0 0 30px rgba(99, 102, 241, 0.40); }
 }
 
-.dark @keyframes pulse-glow {
+.dark .glow-hover:hover {
+  animation: pulse-glow-dark 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow-dark {
   0%, 100% { box-shadow: 0 0 20px rgba(129, 140, 248, 0.25); }
   50%       { box-shadow: 0 0 40px rgba(129, 140, 248, 0.55); }
 }
@@ -287,6 +291,7 @@ body {
 .dark .bg-indigo-50               { background-color: #0d1040 !important; }
 .dark .bg-indigo-100              { background-color: #111550 !important; }
 .dark .bg-violet-50               { background-color: #100d40 !important; }
+.dark .bg-pink-50                 { background-color: #3a1028 !important; }
 .dark .bg-blue-50                 { background-color: #050e24 !important; }
 
 /* ── Text ────────────────────────────────── */
@@ -295,9 +300,9 @@ body {
 .dark .text-slate-800             { color: #c8d6e8 !important; }
 .dark .text-slate-700             { color: #b0c4db !important; }
 .dark .text-slate-600             { color: #8ca0bc !important; }
-.dark .text-slate-500             { color: #6b8098 !important; }
-.dark .text-slate-400             { color: #4e6480 !important; }
-.dark .text-slate-300             { color: #3b5068 !important; }
+.dark .text-slate-500             { color: #849795 !important; }
+.dark .text-slate-400             { color: #a0b2b1 !important; }
+.dark .text-slate-300             { color: #c5d3d1 !important; }
 .dark .text-emerald-600           { color: #34d399 !important; }
 .dark .text-emerald-500           { color: #10b981 !important; }
 .dark .text-rose-600              { color: #f87171 !important; }
@@ -307,6 +312,8 @@ body {
 .dark .text-amber-700             { color: #f59e0b !important; }
 .dark .text-indigo-600            { color: #818cf8 !important; }
 .dark .text-indigo-700            { color: #a5b4fc !important; }
+.dark .text-violet-700            { color: #c4b5fd !important; }
+.dark .text-pink-700              { color: #f9a8d4 !important; }
 .dark .text-white                 { color: #f0f6ff !important; }
 
 /* ── Borders ─────────────────────────────── */
@@ -319,6 +326,8 @@ body {
 .dark .border-emerald-200         { border-color: #065f30 !important; }
 .dark .border-rose-200            { border-color: #7f1d1d !important; }
 .dark .border-indigo-200          { border-color: #312e81 !important; }
+.dark .border-violet-200          { border-color: #4c1d95 !important; }
+.dark .border-pink-200            { border-color: #831843 !important; }
 .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #1e2d45 !important; }
 .dark .divide-slate-800\/80 > :not([hidden]) ~ :not([hidden]) { border-color: #1e2d45 !important; }
 .dark .divide-slate-900 > :not([hidden]) ~ :not([hidden]) { border-color: #0f1729 !important; }

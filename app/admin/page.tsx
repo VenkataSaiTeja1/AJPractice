@@ -1020,12 +1020,12 @@ export default function TeacherAdminDashboard() {
   });
 
   return (
-    <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative">
+    <div className="admin-dashboard flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative">
       
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Practice Portal By VVS</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Portal By VVS</h1>
           <p className="text-xs text-slate-500 mt-1 font-normal">Monitor student scores, curate curriculum exercises, and register student credentials.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -1040,10 +1040,10 @@ export default function TeacherAdminDashboard() {
       </div>
 
       {/* Tabs Selector Bar */}
-      <div className="flex border-b border-slate-200 gap-6">
+      <div className="flex overflow-x-auto border-b border-slate-200 gap-3 sm:gap-6 whitespace-nowrap">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -1051,7 +1051,7 @@ export default function TeacherAdminDashboard() {
         </button>
         <button
           onClick={() => setActiveTab('monitor')}
-          className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'monitor' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -1059,7 +1059,7 @@ export default function TeacherAdminDashboard() {
         </button>
         <button
           onClick={() => setActiveTab('students')}
-          className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'students' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -1067,7 +1067,7 @@ export default function TeacherAdminDashboard() {
         </button>
         <button
           onClick={() => setActiveTab('tasks')}
-          className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'tasks' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -1086,7 +1086,7 @@ export default function TeacherAdminDashboard() {
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Roster size</span>
-                <p className="text-2xl font-extrabold text-white mt-0.5">{stats.activeStudents}</p>
+                <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{stats.activeStudents}</p>
               </div>
             </div>
 
@@ -1096,7 +1096,7 @@ export default function TeacherAdminDashboard() {
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Submissions Logged</span>
-                <p className="text-2xl font-extrabold text-white mt-0.5">{stats.totalSubmissions}</p>
+                <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{stats.totalSubmissions}</p>
               </div>
             </div>
 
@@ -1106,7 +1106,7 @@ export default function TeacherAdminDashboard() {
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Avg Completion</span>
-                <p className="text-2xl font-extrabold text-white mt-0.5">{stats.completionRate}%</p>
+                <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{stats.completionRate}%</p>
               </div>
             </div>
 
@@ -1116,7 +1116,7 @@ export default function TeacherAdminDashboard() {
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pending Reviews</span>
-                <p className="text-2xl font-extrabold text-white mt-0.5">{stats.pendingReviews}</p>
+                <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{stats.pendingReviews}</p>
               </div>
             </div>
           </div>
@@ -1125,7 +1125,7 @@ export default function TeacherAdminDashboard() {
           <div className="glass-card p-6 border border-slate-800 space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                   <CheckCircle className="h-4 w-4 text-emerald-400" />
                   Code Verification Review Progress
                 </h3>
@@ -1289,7 +1289,7 @@ export default function TeacherAdminDashboard() {
         <div className="glass-card p-6 border border-slate-800 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 className="text-base font-bold text-white">Task Completion Progress Tracker</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Task Completion Progress Tracker</h3>
               <p className="text-xs text-slate-400 font-light mt-0.5">Select target year and task below to track active student submissions and downloads.</p>
             </div>
             
@@ -1417,7 +1417,7 @@ export default function TeacherAdminDashboard() {
           {quizAnalytics && quizAnalytics.length > 0 && (
             <div className="glass-card p-6 border border-slate-800 space-y-6">
               <div>
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <BarChart2 className="h-4.5 w-4.5 text-indigo-400" />
                   Concept Mastery & Quiz Question Analytics
                 </h4>
@@ -1575,11 +1575,11 @@ export default function TeacherAdminDashboard() {
         <div className="glass-card p-6 border border-slate-800 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-base font-bold text-white">Student Directory Roster</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Student Directory Roster</h3>
               <p className="text-xs text-slate-400 font-light mt-0.5">Add student credentials manually here to grant them access instantly.</p>
             </div>
             
-            <div className="flex items-center gap-3.5">
+            <div className="flex flex-wrap items-center gap-3.5">
               {/* Year filter for Roster table */}
               <div className="relative">
                 <select
@@ -1644,7 +1644,7 @@ export default function TeacherAdminDashboard() {
             </div>
           </div>
 
-          <div className="border border-slate-900 rounded-lg overflow-hidden">
+          <div className="border border-slate-900 rounded-lg overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-800 text-left text-xs text-slate-300">
               <thead className="bg-slate-900/60 text-slate-400 font-bold">
                 <tr>
@@ -1796,7 +1796,7 @@ export default function TeacherAdminDashboard() {
         <div className="glass-card p-6 border border-slate-800 space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-base font-bold text-white">Syllabus Practice Tasks</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Syllabus Practice Tasks</h3>
               <p className="text-xs text-slate-400 font-light mt-0.5">Manage tasks in the syllabus. Changes propagate immediately to student modules based on Year.</p>
             </div>
             <button

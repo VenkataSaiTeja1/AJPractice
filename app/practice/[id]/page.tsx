@@ -324,7 +324,7 @@ export default function PracticePage({ params }: PageProps) {
           </aside>
 
           {/* ─── Workspace Area ─── */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 w-full">
             {task.type === 'quiz' && (
               <WorkspaceQuiz task={task} studentId={profile.id} submissions={submissions} onSubmitted={onTaskSubmitted} />
             )}
