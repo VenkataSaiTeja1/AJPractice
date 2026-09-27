@@ -65,11 +65,18 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
 
   // Line numbers helper
   const [lineNumbers, setLineNumbers] = useState<number[]>([1]);
+  const gutterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const lines = code.split('\n').length;
     setLineNumbers(Array.from({ length: Math.max(lines, 1) }, (_, i) => i + 1));
   }, [code]);
+
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (gutterRef.current) {
+      gutterRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
 
   // Fetch current execution count for this task
   const fetchExecutionCount = async () => {
@@ -232,7 +239,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
             mobileTab === 'editor'
               ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           <FileCode className="h-3.5 w-3.5" /> Code Editor ({fileName})
@@ -243,7 +250,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
             mobileTab === 'terminal'
               ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           <Terminal className="h-3.5 w-3.5" /> Console & Result {running && '⏳'}
@@ -260,19 +267,19 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           {/* Editor Toolbar */}
           <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center">
+              <div className="h-7 w-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center shrink-0">
                 <FileCode className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               </div>
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">{fileName}</span>
-              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono truncate max-w-[100px] sm:max-w-none">{fileName}</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0">
                 {isCLanguage ? 'C (GCC)' : 'Java 17'}
               </span>
             </div>
             
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {/* Execution Counter */}
               <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-mono font-medium shadow-xs">
-                <span className="text-slate-400">Runs:</span>
+                <span className="text-slate-500 dark:text-slate-400">Runs:</span>
                 <span className="text-indigo-600 dark:text-indigo-400 font-bold">{executionCount}</span>
               </div>
 
@@ -293,8 +300,8 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           </div>
 
           {/* Quick Coding Symbols Ribbon (Pinned above editor for frictionless Mobile & Laptop typing) */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 overflow-x-auto select-none no-scrollbar">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1 flex items-center gap-1">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 overflow-x-auto select-none no-scrollbar w-full">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0 mr-1 flex items-center gap-1">
               <Code2 className="h-3 w-3 text-indigo-500" />
               Keys:
             </span>
@@ -312,7 +319,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
           </div>
 
           {/* Custom Text Editor Container */}
-          <div className="flex-1 flex overflow-auto font-mono text-sm bg-slate-50/40 dark:bg-slate-950/40 select-text min-h-0 relative">
+          <div className="flex-1 flex font-mono text-sm bg-slate-50/40 dark:bg-slate-950/40 select-text min-h-0 relative w-full overflow-hidden">
             {/* Anti-OCR / Google Lens Roll Number Watermark Overlay */}
             <div className="absolute inset-0 pointer-events-none select-none overflow-hidden flex flex-wrap gap-x-14 gap-y-16 items-center justify-center p-8 opacity-[0.03] dark:opacity-[0.05]">
               {Array.from({ length: 28 }).map((_, i) => (
@@ -326,7 +333,10 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
             </div>
 
             {/* Gutter Line Numbers */}
-            <div className="w-10 sm:w-12 text-right text-slate-400 pr-2.5 pt-3 border-r border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/50 select-none text-xs leading-6 relative z-10 shrink-0">
+            <div 
+              ref={gutterRef}
+              className="w-10 sm:w-12 text-right text-slate-500 dark:text-slate-400 pr-2.5 pt-3 border-r border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/50 select-none text-xs sm:text-sm leading-6 relative z-10 shrink-0 overflow-hidden"
+            >
               {lineNumbers.map(n => (
                 <div key={n}>{n}</div>
               ))}
@@ -337,6 +347,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               ref={textareaRef}
               value={code}
               onChange={(e) => setCode(e.target.value)}
+              onScroll={handleScroll}
               onPaste={(e) => {
                 e.preventDefault();
                 alert("Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.");
@@ -353,7 +364,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
                 e.preventDefault();
               }}
               disabled={limitReached}
-              className="flex-1 p-3 bg-transparent text-slate-900 dark:text-slate-100 font-mono text-xs sm:text-sm leading-6 outline-none border-none resize-none h-full overflow-y-auto whitespace-pre tab-size-4 disabled:cursor-not-allowed relative z-10"
+              className="flex-1 min-w-0 w-full h-full p-3 bg-transparent text-slate-900 dark:text-slate-100 font-mono text-xs sm:text-sm leading-6 outline-none border-none resize-none overflow-auto whitespace-pre tab-size-4 disabled:cursor-not-allowed relative z-10"
               style={{ tabSize: 4 }}
               placeholder={isCLanguage ? "// Enter your C code here..." : "// Enter your Java code here..."}
               spellCheck={false}
