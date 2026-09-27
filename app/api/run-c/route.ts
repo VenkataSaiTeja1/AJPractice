@@ -14,6 +14,33 @@ function isCommandAvailable(command: string): Promise<boolean> {
   });
 }
 
+function getLocalGccCommand(): Promise<string | null> {
+  return new Promise(async (resolve) => {
+    // 1. Check if gcc is directly available in PATH
+    const inPath = await isCommandAvailable('gcc');
+    if (inPath) return resolve('gcc');
+
+    // 2. Check common Windows installation directories
+    if (process.platform === 'win32') {
+      const candidates = [
+        'C:\\MinGW\\bin\\gcc.exe',
+        'C:\\msys64\\ucrt64\\bin\\gcc.exe',
+        'C:\\msys64\\mingw64\\bin\\gcc.exe',
+        'C:\\TDM-GCC-64\\bin\\gcc.exe',
+        'C:\\Program Files\\CodeBlocks\\MinGW\\bin\\gcc.exe',
+        'C:\\Program Files (x86)\\Dev-Cpp\\MinGW64\\bin\\gcc.exe'
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          return resolve(`"${p}"`);
+        }
+      }
+    }
+
+    resolve(null);
+  });
+}
+
 function cleanup(dir: string) {
   try {
     if (fs.existsSync(dir)) {
@@ -37,19 +64,29 @@ export async function POST(req: Request) {
 
     // METHOD A: If COMPILER_SERVICE_URL (Render backend) is configured, forward to Render
     const remoteCompilerBase = process.env.COMPILER_SERVICE_URL;
-    if (remoteCompilerBase && !remoteCompilerBase.includes('localhost') && !remoteCompilerBase.includes('127.0.0.1')) {
+    const requestHost = req.headers.get('host') || '';
+    const isSelfHost = remoteCompilerBase && requestHost && remoteCompilerBase.includes(requestHost);
+
+    if (remoteCompilerBase && !isSelfHost && !remoteCompilerBase.includes('localhost') && !remoteCompilerBase.includes('127.0.0.1')) {
       try {
         const renderUrl = `${remoteCompilerBase.replace(/\/$/, '')}/api/run-c`;
         console.log(`[C Runner] Forwarding execution to Render compiler: ${renderUrl}`);
+        const renderController = new AbortController();
+        const renderTimeout = setTimeout(() => renderController.abort(), 15000);
+
         const renderRes = await fetch(renderUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code, stdin }),
+          signal: renderController.signal
         });
+        clearTimeout(renderTimeout);
 
         if (renderRes.ok) {
           const renderData = await renderRes.json();
-          return NextResponse.json(renderData);
+          if (renderData && renderData.run) {
+            return NextResponse.json(renderData);
+          }
         } else {
           console.warn(`[C Runner] Render returned status ${renderRes.status}. Falling back to secondary runner.`);
         }
@@ -58,10 +95,10 @@ export async function POST(req: Request) {
       }
     }
 
-    // METHOD B: Execute locally using GCC if installed on host
-    const localGccAvailable = await isCommandAvailable('gcc');
+    // METHOD B: Execute locally using GCC if installed on host / server
+    const localGccCmd = await getLocalGccCommand();
 
-    if (localGccAvailable) {
+    if (localGccCmd) {
       const runId = crypto.randomUUID();
       executionDir = path.join(process.cwd(), '.temp_runs_c', runId);
       fs.mkdirSync(executionDir, { recursive: true });
@@ -72,7 +109,7 @@ export async function POST(req: Request) {
       const outputBinary = isWindows ? 'main.exe' : 'main';
 
       // Compile C source code with -O2 and -lm (math library)
-      const compileCmd = `gcc -O2 main.c -o ${outputBinary} -lm`;
+      const compileCmd = `${localGccCmd} -O2 main.c -o ${outputBinary} -lm`;
       console.log(`[C Runner] Compiling main.c locally: ${compileCmd}`);
 
       const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
@@ -166,12 +203,69 @@ export async function POST(req: Request) {
           stderr: runResult.stderr,
           code: runResult.code === null ? 124 : runResult.code,
           signal: runResult.code === null ? 'SIGKILL' : null,
-          output: runResult.stdout + runResult.stderr
+          output: runResult.stdout + (runResult.stderr ? '\n' + runResult.stderr : '')
         }
       });
     }
 
-    // METHOD C: Fallback to JDoodle Cloud API (for cloud serverless deployment like Vercel)
+    // METHOD C: Wandbox Cloud Compiler API (Fast, Free, No API Key, GCC 13.2.0)
+    try {
+      console.log('[C Runner] Trying Wandbox GCC compiler...');
+      const wandboxController = new AbortController();
+      const wandboxTimeout = setTimeout(() => wandboxController.abort(), 12000);
+
+      const wandboxRes = await fetch('https://wandbox.org/api/compile.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: code,
+          compiler: 'gcc-13.2.0-c',
+          stdin: stdin || ''
+        }),
+        signal: wandboxController.signal
+      });
+      clearTimeout(wandboxTimeout);
+
+      if (wandboxRes.ok) {
+        const wandboxData = await wandboxRes.json();
+        const statusCode = parseInt(wandboxData.status || '0', 10);
+        const compilerErr = wandboxData.compiler_error || wandboxData.compiler_message || '';
+        const programOut = wandboxData.program_output || '';
+        const programErr = wandboxData.program_error || '';
+
+        // If compilation failed
+        if (statusCode !== 0 && !programOut && compilerErr) {
+          return NextResponse.json({
+            language: 'c',
+            version: 'wandbox-gcc',
+            run: {
+              stdout: '',
+              stderr: compilerErr,
+              code: statusCode,
+              signal: null,
+              output: compilerErr
+            }
+          });
+        }
+
+        const combinedOutput = programOut || (programErr ? programErr : compilerErr);
+        return NextResponse.json({
+          language: 'c',
+          version: 'wandbox-gcc',
+          run: {
+            stdout: programOut,
+            stderr: programErr || (statusCode !== 0 ? compilerErr : ''),
+            code: statusCode,
+            signal: null,
+            output: combinedOutput
+          }
+        });
+      }
+    } catch (wandboxErr: any) {
+      console.warn('[C Runner] Wandbox execution error:', wandboxErr.message);
+    }
+
+    // METHOD D: Fallback to JDoodle Cloud API (if configured in environment)
     const jdoodleKeys = [
       { id: process.env.JDOODLE_CLIENT_ID_1, secret: process.env.JDOODLE_CLIENT_SECRET_1 },
       { id: process.env.JDOODLE_CLIENT_ID_2, secret: process.env.JDOODLE_CLIENT_SECRET_2 },
@@ -180,6 +274,7 @@ export async function POST(req: Request) {
     ].filter(k => k.id && k.secret);
 
     if (jdoodleKeys.length > 0) {
+      console.log('[C Runner] Trying JDoodle API...');
       for (let i = 0; i < jdoodleKeys.length; i++) {
         const { id, secret } = jdoodleKeys[i];
         try {
@@ -222,40 +317,46 @@ export async function POST(req: Request) {
       }
     }
 
-    // METHOD D: Fallback to Piston Public Execution Engine
+    // METHOD E: Glot.io Open Code Runner
     try {
-      const pistonRes = await fetch('https://emkc.org/api/v2/piston/execute', {
+      console.log('[C Runner] Trying Glot.io API...');
+      const glotController = new AbortController();
+      const glotTimeout = setTimeout(() => glotController.abort(), 12000);
+
+      const glotRes = await fetch('https://glot.io/api/run/c/latest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          language: 'c',
-          version: '10.2.0',
           files: [{ name: 'main.c', content: code }],
-          stdin: stdin
-        })
+          stdin: stdin || ''
+        }),
+        signal: glotController.signal
       });
+      clearTimeout(glotTimeout);
 
-      if (pistonRes.ok) {
-        const pistonData = await pistonRes.json();
-        const run = pistonData.run || {};
+      if (glotRes.ok) {
+        const glotData = await glotRes.json();
+        const stdout = glotData.stdout || '';
+        const stderr = glotData.stderr || glotData.error || '';
+        const isErr = !!glotData.error || (stderr && !stdout);
         return NextResponse.json({
           language: 'c',
-          version: 'piston-gcc',
+          version: 'glot-gcc',
           run: {
-            stdout: run.stdout || '',
-            stderr: run.stderr || '',
-            code: run.code ?? 0,
-            signal: run.signal || null,
-            output: run.output || ''
+            stdout: stdout,
+            stderr: stderr,
+            code: isErr ? 1 : 0,
+            signal: null,
+            output: stdout + (stderr ? '\n' + stderr : '')
           }
         });
       }
-    } catch (pistonErr: any) {
-      console.warn('Piston fallback error:', pistonErr.message);
+    } catch (glotErr: any) {
+      console.warn('[C Runner] Glot.io execution error:', glotErr.message);
     }
 
     return NextResponse.json({
-      error: 'C Compiler is currently offline. Please configure your Render compiler URL or local GCC.'
+      error: 'C Compiler is currently offline. Please check network connectivity or configure local GCC.'
     }, { status: 503 });
 
   } catch (error: any) {
