@@ -54,35 +54,35 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-slate-100 via-white to-indigo-50 relative overflow-hidden">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-slate-100 via-white to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 relative overflow-hidden">
 
       {/* Decorative gradient blobs */}
-      <div className="pointer-events-none absolute -top-32 -left-32 h-[420px] w-[420px] rounded-full bg-indigo-200/50 blur-[100px]" />
-      <div className="pointer-events-none absolute -bottom-40 -right-40 h-[480px] w-[480px] rounded-full bg-purple-200/40 blur-[120px]" />
-      <div className="pointer-events-none absolute top-1/3 right-1/4 h-[260px] w-[260px] rounded-full bg-sky-200/30 blur-[90px]" />
+      <div className="pointer-events-none absolute -top-32 -left-32 h-[420px] w-[420px] rounded-full bg-indigo-200/50 dark:bg-indigo-900/30 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-40 -right-40 h-[480px] w-[480px] rounded-full bg-purple-200/40 dark:bg-purple-900/25 blur-[120px]" />
+      <div className="pointer-events-none absolute top-1/3 right-1/4 h-[260px] w-[260px] rounded-full bg-sky-200/30 dark:bg-sky-900/20 blur-[90px]" />
 
       <div className="w-full max-w-md relative">
         {/* Card */}
-        <div className="rounded-2xl bg-white border border-slate-200 shadow-xl shadow-slate-200/60 p-8 relative overflow-hidden">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/60 p-8 relative overflow-hidden">
 
           {/* Subtle top accent bar */}
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500" />
 
           {/* Header / Branding */}
           <div className="flex flex-col items-center justify-center text-center mb-8 pt-2">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 mb-4 shadow-sm">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 mb-4 shadow-sm">
               <GraduationCap className="h-8 w-8" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               Practice Portal By VVS
             </h1>
-            <p className="text-sm text-slate-500 mt-1.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
               Access scheduled curriculum exercises
             </p>
           </div>
 
           {/* Mode Switcher */}
-          <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100 rounded-xl border border-slate-200 mb-6">
+          <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-6">
             <button
               type="button"
               onClick={() => {
@@ -92,8 +92,8 @@ export default function LoginPage() {
               }}
               className={`py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                 loginMode === 'student'
-                  ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
-                  : 'text-slate-500 hover:text-slate-700 border border-transparent'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-transparent'
               }`}
             >
               Student Portal
@@ -107,8 +107,8 @@ export default function LoginPage() {
               }}
               className={`py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                 loginMode === 'faculty'
-                  ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
-                  : 'text-slate-500 hover:text-slate-700 border border-transparent'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-transparent'
               }`}
             >
               Faculty Portal
@@ -117,7 +117,7 @@ export default function LoginPage() {
 
           {/* Messages */}
           {errorMessage && (
-            <div className="mb-5 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-600 flex items-start gap-2">
+            <div className="mb-5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 p-3.5 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
               <span className="mt-0.5 shrink-0 inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
               {errorMessage}
             </div>
@@ -129,7 +129,7 @@ export default function LoginPage() {
             {loginMode === 'student' ? (
               /* Student: Roll Number input */
               <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Roll Number
                 </label>
                 <input
@@ -138,13 +138,13 @@ export default function LoginPage() {
                   value={rollNumber}
                   onChange={(e) => setRollNumber(e.target.value)}
                   placeholder="Enter your roll number"
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all duration-200 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all duration-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/50"
                 />
               </div>
             ) : (
               /* Faculty: Email input */
               <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Faculty Email
                 </label>
                 <input
@@ -153,14 +153,14 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email address"
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all duration-200 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all duration-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/50"
                 />
               </div>
             )}
 
             {/* Password */}
             <div className="space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Password
               </label>
               <div className="relative">
@@ -170,12 +170,12 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 pr-11 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all duration-200 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 pr-11 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all duration-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors duration-150 cursor-pointer"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors duration-150 cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -190,7 +190,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed py-3 text-sm font-semibold text-white transition-all duration-200 shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300 cursor-pointer active:scale-[0.98]"
+              className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:bg-indigo-400 disabled:cursor-not-allowed py-3 text-sm font-semibold text-white transition-all duration-200 shadow-md shadow-indigo-200 dark:shadow-indigo-950/50 hover:shadow-lg hover:shadow-indigo-300 dark:hover:shadow-indigo-900/50 cursor-pointer active:scale-[0.98]"
             >
               {loading ? (
                 <>
@@ -210,8 +210,8 @@ export default function LoginPage() {
           </form>
 
           {/* Notice */}
-          <div className="text-center mt-8 border-t border-slate-100 pt-5">
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+          <div className="text-center mt-8 border-t border-slate-100 dark:border-slate-800 pt-5">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
               {loginMode === 'student' 
                 ? 'Your account must be created by your faculty representative. Use the roll number assigned to you.'
                 : 'Use your registered faculty administrator email and password.'}
@@ -221,7 +221,7 @@ export default function LoginPage() {
         </div>
 
         {/* Bottom attribution */}
-        <p className="text-center text-[10px] text-slate-400 mt-6">
+        <p className="text-center text-[10px] text-slate-400 dark:text-slate-600 mt-6">
           Advanced Java Practice Portal &middot; Secure Login
         </p>
       </div>

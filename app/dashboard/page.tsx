@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -386,30 +386,30 @@ export default function StudentDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
         {/* Welcome message */}
-        <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-50 blur-2xl rounded-full opacity-80" />
-          <div className="absolute bottom-0 left-0 h-28 w-28 bg-violet-50 blur-2xl rounded-full opacity-60" />
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-50 dark:bg-indigo-950/30 blur-2xl rounded-full opacity-80" />
+          <div className="absolute bottom-0 left-0 h-28 w-28 bg-violet-50 dark:bg-violet-950/25 blur-2xl rounded-full opacity-60" />
           <div className="relative">
             <div className="flex items-center gap-2 mb-3">
               <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Online</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Online</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-              Welcome back, <span className="text-indigo-600">{profile?.full_name}</span>!
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+              Welcome back, <span className="text-indigo-600 dark:text-indigo-400">{profile?.full_name}</span>!
             </h2>
-            <p className="text-sm text-slate-500 leading-relaxed">
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               {profile?.roll_number?.toUpperCase().startsWith('26FE') || profile?.year === 1
                 ? 'Master C Programming & Data Structures exercises scheduled by your faculty administrator. Verify outputs inside the live compiler.'
                 : 'Master Java exercises scheduled by your faculty administrator. Verify outputs inside code environments.'}
             </p>
           </div>
-          <div className="relative flex items-center gap-4 mt-6 text-xs text-slate-500 pt-4 border-t border-slate-100">
+          <div className="relative flex items-center gap-4 mt-6 text-xs text-slate-500 dark:text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5 text-slate-400" />
-              Roll: <span className="text-slate-800 font-semibold">{profile?.roll_number || 'N/A'}</span>
+              <BookOpen className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+              Roll: <span className="text-slate-800 dark:text-slate-200 font-semibold">{profile?.roll_number || 'N/A'}</span>
             </div>
-            <div className="h-3.5 w-px bg-slate-200" />
-            <div className="text-indigo-600 font-semibold">
+            <div className="h-3.5 w-px bg-slate-200 dark:bg-slate-700" />
+            <div className="text-indigo-600 dark:text-indigo-400 font-semibold">
               {profile?.roll_number?.toUpperCase().startsWith('26FE') || profile?.year === 1
                 ? `1st Year (${profile?.roll_number?.toUpperCase().includes('43') ? 'CAI' : 'CSD'}) · C & DS`
                 : profile?.year === 2
@@ -422,51 +422,51 @@ export default function StudentDashboard() {
         {/* Stats cards */}
         <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
           {/* Passed */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Passed</span>
-              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Passed</span>
+              <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center">
                 <CheckCircle className="h-4 w-4 text-emerald-500" />
               </div>
             </div>
             <div className="flex items-baseline gap-1.5 mt-3">
-              <span className="text-3xl font-extrabold text-emerald-600">{stats.completed}</span>
-              <span className="text-sm text-slate-400 font-medium">/ {stats.total}</span>
+              <span className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.completed}</span>
+              <span className="text-sm text-slate-400 dark:text-slate-500 font-medium">/ {stats.total}</span>
             </div>
-            <div className="mt-2.5 text-[11px] text-emerald-600/80 font-medium">
+            <div className="mt-2.5 text-[11px] text-emerald-600/80 dark:text-emerald-400/80 font-medium">
               Tasks cleared
             </div>
           </div>
 
           {/* Failed */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Failed</span>
-              <div className="h-8 w-8 rounded-lg bg-rose-50 flex items-center justify-center">
-                <XCircle className="h-4 w-4 text-rose-500" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Failed</span>
+              <div className="h-8 w-8 rounded-lg bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center">
+                <XCircle className="h-4 w-4 text-rose-500 dark:text-rose-400" />
               </div>
             </div>
             <div className="mt-3">
-              <span className="text-3xl font-extrabold text-rose-600">{stats.failed}</span>
+              <span className="text-3xl font-extrabold text-rose-600 dark:text-rose-400">{stats.failed}</span>
             </div>
-            <div className="mt-2.5 text-[11px] text-rose-600/80 font-medium">
+            <div className="mt-2.5 text-[11px] text-rose-600/80 dark:text-rose-400/80 font-medium">
               Re-runs allowed
             </div>
           </div>
 
           {/* Completion */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Completion</span>
-              <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                <BarChart3 className="h-4 w-4 text-indigo-500" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Completion</span>
+              <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center">
+                <BarChart3 className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
               </div>
             </div>
             <div className="flex items-baseline gap-0.5 mt-3">
-              <span className="text-3xl font-extrabold text-indigo-600">{stats.rate}</span>
-              <span className="text-lg font-bold text-indigo-400">%</span>
+              <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{stats.rate}</span>
+              <span className="text-lg font-bold text-indigo-400 dark:text-indigo-500">%</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
               <div 
                 className="bg-gradient-to-r from-indigo-500 to-violet-500 h-1.5 rounded-full transition-all duration-700" 
                 style={{ width: `${stats.rate}%` }}
@@ -475,35 +475,35 @@ export default function StudentDashboard() {
           </div>
 
           {/* Quiz Grade */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Quiz Grade</span>
-              <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                <Award className="h-4 w-4 text-amber-500" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Quiz Grade</span>
+              <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center">
+                <Award className="h-4 w-4 text-amber-500 dark:text-amber-400" />
               </div>
             </div>
             <div className="flex items-baseline gap-1 mt-3">
-              <span className="text-3xl font-extrabold text-amber-600">{stats.quizScore.toFixed(1)}</span>
-              <span className="text-sm text-slate-400 font-medium">/ 10</span>
+              <span className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">{stats.quizScore.toFixed(1)}</span>
+              <span className="text-sm text-slate-400 dark:text-slate-500 font-medium">/ 10</span>
             </div>
-            <div className="mt-2.5 text-[11px] text-amber-600/80 font-semibold uppercase tracking-wide">
+            <div className="mt-2.5 text-[11px] text-amber-600/80 dark:text-amber-400/80 font-semibold uppercase tracking-wide">
               Avg − Penalty
             </div>
           </div>
 
           {/* Coding Grade */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Coding Grade</span>
-              <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center">
-                <Code className="h-4 w-4 text-teal-500" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Coding Grade</span>
+              <div className="h-8 w-8 rounded-lg bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center">
+                <Code className="h-4 w-4 text-teal-500 dark:text-teal-400" />
               </div>
             </div>
             <div className="flex items-baseline gap-1 mt-3">
-              <span className="text-3xl font-extrabold text-teal-600">{stats.codingScore.toFixed(1)}</span>
-              <span className="text-sm text-slate-400 font-medium">/ 10</span>
+              <span className="text-3xl font-extrabold text-teal-600 dark:text-teal-400">{stats.codingScore.toFixed(1)}</span>
+              <span className="text-sm text-slate-400 dark:text-slate-500 font-medium">/ 10</span>
             </div>
-            <div className="mt-2.5 text-[11px] text-teal-600/80 font-semibold uppercase tracking-wide">
+            <div className="mt-2.5 text-[11px] text-teal-600/80 dark:text-teal-400/80 font-semibold uppercase tracking-wide">
               Program Avg
             </div>
           </div>
@@ -511,20 +511,20 @@ export default function StudentDashboard() {
       </div>
 
       {/* TODAY'S MANDATORY SCHEDULED TASKS */}
-      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-50/50 blur-3xl rounded-full" />
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-50/50 dark:bg-indigo-950/20 blur-3xl rounded-full" />
         
         <div className="relative flex items-center gap-3 mb-5">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 flex items-center justify-center">
-            <Star className="h-5 w-5 text-indigo-600" />
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
+            <Star className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Today&apos;s Mandatory Tasks</h3>
-            <p className="text-xs text-slate-500">Active scheduled exercises you need to complete</p>
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Today&apos;s Mandatory Tasks</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Active scheduled exercises you need to complete</p>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-indigo-500 animate-ping" />
-            <span className="text-xs font-semibold text-indigo-600">{activeMandatory.length} Active</span>
+            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{activeMandatory.length} Active</span>
           </div>
         </div>
 
@@ -541,8 +541,8 @@ export default function StudentDashboard() {
                   href={`/practice/${task.id}`}
                   className={`group p-5 rounded-xl border transition-all duration-200 flex flex-col justify-between gap-4 cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
                     isPassed 
-                      ? 'border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 hover:shadow-emerald-100/50' 
-                      : 'border-slate-200 bg-slate-50/30 hover:bg-white hover:shadow-slate-200/50'
+                      ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:shadow-emerald-100/50 dark:hover:shadow-emerald-950/50' 
+                      : 'border-slate-200 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50'
                   }`}
                 >
                   <div className="space-y-2">
@@ -550,16 +550,16 @@ export default function StudentDashboard() {
                       {getTaskTypeBadge(task.type)}
                       {getStatusBadge(status)}
                     </div>
-                    <h4 className="text-sm sm:text-base font-bold text-slate-900 mt-1 leading-snug group-hover:text-indigo-700 transition-colors">{task.title}</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{task.description}</p>
+                    <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 mt-1 leading-snug group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors">{task.title}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{task.description}</p>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1 text-[11px]">
-                    <span className="text-slate-500 flex items-center gap-1">
+                  <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-3 mt-1 text-[11px]">
+                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      Until: <strong className="text-slate-700 font-semibold">{endFormatted}</strong>
+                      Until: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{endFormatted}</strong>
                     </span>
-                    <span className={`font-bold uppercase tracking-wider text-xs flex items-center gap-1 ${isPassed ? 'text-emerald-600' : 'text-indigo-600 group-hover:gap-2 transition-all'}`}>
+                    <span className={`font-bold uppercase tracking-wider text-xs flex items-center gap-1 ${isPassed ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400 group-hover:gap-2 transition-all'}`}>
                       {isPassed ? (
                         <>
                           <CheckCircle className="h-3.5 w-3.5" />
@@ -579,11 +579,11 @@ export default function StudentDashboard() {
           </div>
         ) : (
           <div className="text-center py-10 space-y-3">
-            <div className="h-14 w-14 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto">
+            <div className="h-14 w-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center mx-auto">
               <CheckCircle className="h-7 w-7 text-emerald-400" />
             </div>
-            <p className="text-sm font-semibold text-slate-700">All Scheduled Tasks Cleared</p>
-            <p className="text-xs max-w-sm mx-auto text-slate-500 leading-relaxed">There are no scheduled mandatory exercises active at the moment. Please check back later when your faculty schedules a task.</p>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">All Scheduled Tasks Cleared</p>
+            <p className="text-xs max-w-sm mx-auto text-slate-500 dark:text-slate-400 leading-relaxed">There are no scheduled mandatory exercises active at the moment. Please check back later when your faculty schedules a task.</p>
           </div>
         )}
       </div>
