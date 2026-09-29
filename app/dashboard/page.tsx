@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, getCurrentSession, updateLocalSession } from '@/lib/supabase';
+import { isTaskAssignedToStudent } from '@/lib/task-assignment';
 import { 
   Award, CheckCircle, Clock, XCircle, Code, HelpCircle, Server, 
   BookOpen, ChevronRight, BarChart3, Star, RefreshCw, Key, ShieldAlert 
@@ -63,20 +64,7 @@ export default function StudentDashboard() {
       if (tasksError) throw tasksError;
 
       // Filter tasks by the student's Year of Study and Section (1st Year CAI/CSD, 2nd Year, 3rd Year)
-      const roll = (userProfile.roll_number || '').toUpperCase();
-      const isFirstYear = userProfile.year === 1 || roll.startsWith('26FE');
-      const studentYear = isFirstYear ? 1 : (userProfile.year || 3);
-      const studentSection = isFirstYear
-        ? (roll.includes('43') ? 'CAI' : roll.includes('44') ? 'CSD' : (userProfile.section || 'All'))
-        : (userProfile.section || 'All');
-
-      const yearTasks = (dbTasks || []).filter(t => {
-        if (t.year !== studentYear) return false;
-        if (studentYear === 1 || studentYear === 2) {
-          return t.section === studentSection || t.section === 'All' || !t.section;
-        }
-        return true;
-      });
+      const yearTasks = (dbTasks || []).filter(t => isTaskAssignedToStudent(t, userProfile));
       setTasks(yearTasks);
 
       // Fetch Submissions for this student (excluding runs)

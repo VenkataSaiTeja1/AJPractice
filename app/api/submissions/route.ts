@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { isTaskAssignedToStudent } from '@/lib/task-assignment';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,20 @@ export async function POST(req: Request) {
 
     if (taskError || !task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    const { data: studentProfile, error: studentProfileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', studentId)
+      .single();
+
+    if (studentProfileError || !studentProfile) {
+      return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+    }
+
+    if (!isTaskAssignedToStudent(task, studentProfile)) {
+      return NextResponse.json({ error: 'This task is not assigned to your year or section.' }, { status: 403 });
     }
 
     // 2. Enforce 1-attempt limit for quizzes
@@ -312,20 +327,7 @@ async function updateStudentOverallGrades(studentId: string) {
   }
 
   // 3. Filter tasks assigned to this student
-  const roll = profile.roll_number?.toUpperCase() || '';
-  const isFirstYear = profile.year === 1 || roll.startsWith('26FE');
-  const studentYear = isFirstYear ? 1 : (profile.year || 3);
-  const studentSection = isFirstYear 
-    ? (roll.includes('43') ? 'CAI' : roll.includes('44') ? 'CSD' : (profile.section || 'All'))
-    : (profile.section || 'All');
-
-  const studentTasks = (allTasks || []).filter(t => {
-    if (t.year !== studentYear) return false;
-    if (studentYear === 1 || studentYear === 2) {
-      return t.section === studentSection || t.section === 'All' || !t.section;
-    }
-    return true;
-  });
+  const studentTasks = (allTasks || []).filter(t => isTaskAssignedToStudent(t, profile));
 
   // 4. Fetch all real submissions by this student
   const { data: allSubmissions, error: subsErr } = await supabase

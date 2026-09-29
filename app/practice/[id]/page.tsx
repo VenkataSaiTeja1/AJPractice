@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, getCurrentSession } from '@/lib/supabase';
+import { getTaskAssignment, isTaskAssignedToStudent } from '@/lib/task-assignment';
 import WorkspaceQuiz from '@/components/workspace-quiz';
 import WorkspaceCoding from '@/components/workspace-coding';
 import WorkspaceCloudLab from '@/components/workspace-cloudlab';
@@ -47,23 +48,14 @@ export default function PracticePage({ params }: PageProps) {
       if (taskError || !dbTask) throw new Error('Task not found');
 
       // Enforce year and section security boundaries
-      const roll = (userProfile.roll_number || '').toUpperCase();
-      const isFirstYear = userProfile.year === 1 || roll.startsWith('26FE');
-      const studentYear = isFirstYear ? 1 : (userProfile.year || 3);
-      const studentSection = isFirstYear
-        ? (roll.includes('43') ? 'CAI' : roll.includes('44') ? 'CSD' : (userProfile.section || 'All'))
-        : (userProfile.section || 'All');
-
-      if (dbTask.year !== studentYear) {
-        throw new Error('Access denied: target student year mismatch.');
-      }
-      if (studentYear === 1 || studentYear === 2) {
-        if (dbTask.section && dbTask.section !== 'All' && dbTask.section !== studentSection) {
-          throw new Error('Access denied: target student section mismatch.');
-        }
+      if (!isTaskAssignedToStudent(dbTask, userProfile)) {
+        throw new Error('Access denied: this task is not assigned to your year or section.');
       }
 
-      setTask(dbTask);
+      const assignment = getTaskAssignment(dbTask);
+      const accessibleTask = { ...dbTask, year: assignment.year, section: assignment.section };
+
+      setTask(accessibleTask);
 
       // Fetch user's submissions for this task (excluding runs)
       const { data: dbSubs, error: subsError } = await supabase

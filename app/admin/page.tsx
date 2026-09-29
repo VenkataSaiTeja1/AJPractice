@@ -625,9 +625,8 @@ export default function TeacherAdminDashboard() {
         ? await supabase.from('tasks').update(payload).eq('id', editingTask.id)
         : await supabase.from('tasks').insert(payload);
 
-      // Graceful fallback for tasks_year_check / tasks_section_check if constraint not yet updated in Postgres
-      if (saveResult.error && taskYear === 1 && (saveResult.error.message?.includes('tasks_year_check') || saveResult.error.message?.includes('tasks_section_check'))) {
-        payload.year = 2;
+      // Keep the intended assignment in metadata when an older database rejects branch values.
+      if (saveResult.error && taskYear === 1 && saveResult.error.message?.includes('tasks_section_check')) {
         payload.section = null;
         saveResult = editingTask
           ? await supabase.from('tasks').update(payload).eq('id', editingTask.id)
