@@ -42,6 +42,51 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const [resetConfirm, setResetConfirm] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const draftKey = `code-draft:${studentId}:${task.id}`;
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  // Restore draft: local draft first, else the latest submitted code from the database
+  useEffect(() => {
+    let cancelled = false;
+    const restore = async () => {
+      try {
+        const local = localStorage.getItem(draftKey);
+        if (local !== null) {
+          if (!cancelled) setCode(local);
+        } else if (studentId) {
+          const res = await fetch(`/api/submissions?studentId=${studentId}&taskId=${task.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            const last = Array.isArray(data)
+              ? data.find((s: any) => s.submitted_content && !s.is_run)
+              : null;
+            if (last && !cancelled) setCode(last.submitted_content);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to restore draft:', e);
+      } finally {
+        if (!cancelled) setDraftLoaded(true);
+      }
+    };
+    restore();
+    return () => { cancelled = true; };
+  }, [draftKey, studentId, task.id]);
+
+  // Debounced autosave to localStorage
+  useEffect(() => {
+    if (!draftLoaded) return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, code);
+        setSavedAt(new Date());
+      } catch (e) {
+        console.error('Autosave failed:', e);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [code, draftKey, draftLoaded]);
 
   useEffect(() => {
     const fetchStudentRoll = async () => {
@@ -123,6 +168,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
       return;
     }
     setCode(defaultStarter);
+    localStorage.removeItem(draftKey);
     setConsoleOutput('');
     setConsoleError('');
     setExitCode(null);
@@ -277,6 +323,11 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
             </div>
             
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              {savedAt && (
+                <span className="hidden sm:inline text-[10px] text-slate-500 dark:text-slate-400">
+                  Auto-saved {savedAt.toLocaleTimeString()}
+                </span>
+              )}
               {/* Execution Counter */}
               <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-mono font-medium shadow-xs">
                 <span className="text-slate-500 dark:text-slate-400">Runs:</span>
@@ -513,9 +564,39 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
                   </div>
                   
                   {/* Feedback content box */}
-                  <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-[11px] font-mono text-slate-700 dark:text-slate-300 max-h-[90px] overflow-y-auto whitespace-pre-wrap leading-relaxed">
-                    {gradeResult.feedback}
-                  </div>
+                  {(() => {
+                    const fb: string = gradeResult.feedback || '';
+                    const m = fb.match(/^([^\n]*Output Mismatch\.?)\n\nInput parameters:\n"([\s\S]*?)"\n\nExpected:\n"([\s\S]*?)"\n\nActual:\n"([\s\S]*)"$/);
+                    if (gradeResult.status !== 'passed' && m) {
+                      const [, title, inp, exp, act] = m;
+                      const block = 'rounded-lg border p-2.5 font-mono text-xs whitespace-pre-wrap break-words max-h-[160px] overflow-auto';
+                      return (
+                        <div className="space-y-2.5">
+                          <p className="text-xs font-bold text-rose-700 dark:text-rose-300">{title}</p>
+                          {inp !== '(none)' && (
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 block mb-1">Input</span>
+                              <pre className={`${block} bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100`}>{inp}</pre>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block mb-1">Expected Output</span>
+                            <pre className={`${block} bg-emerald-50 dark:bg-emerald-950 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100`}>{exp || '(empty)'}</pre>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 block mb-1">Your Output</span>
+                            <pre className={`${block} bg-rose-50 dark:bg-rose-950 border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-100`}>{act || '(empty)'}</pre>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">Check spaces, line breaks and letter case — they must match exactly.</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-800 dark:text-slate-200 max-h-[220px] overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                        {fb}
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 !errorMessage && (
