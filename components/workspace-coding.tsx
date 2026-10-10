@@ -40,6 +40,26 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const [executionCount, setExecutionCount] = useState(0);
   const [rollNumber, setRollNumber] = useState('');
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (running || submitting) {
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/queue-status');
+          if (res.ok) {
+            const data = await res.json();
+            const q = isCLanguage ? data.c : data.java;
+            setQueuePosition(q.waiting);
+          }
+        } catch (e) {}
+      }, 1000);
+    } else {
+      setQueuePosition(null);
+    }
+    return () => clearInterval(interval);
+  }, [running, submitting, isCLanguage]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `code-draft:${studentId}:${task.id}`;
@@ -445,7 +465,9 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               className="flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-300 dark:border-slate-700 hover:border-slate-400 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="h-3.5 w-3.5 text-emerald-600 fill-emerald-600" />
-              {running ? 'Compiling & Running...' : 'Run Code'}
+              {running 
+                ? (queuePosition !== null && queuePosition > 0 ? `Queue: ${queuePosition} ahead...` : 'Compiling & Running...') 
+                : 'Run Code'}
             </button>
             
             <button
@@ -454,7 +476,9 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 px-5 py-2 text-xs font-bold text-white transition-all shadow-md shadow-indigo-500/25 cursor-pointer disabled:cursor-not-allowed active:scale-[0.98]"
             >
               <Send className="h-3.5 w-3.5" />
-              {submitting ? 'Verifying...' : 'Submit Program'}
+              {submitting 
+                ? (queuePosition !== null && queuePosition > 0 ? `Queue: ${queuePosition} ahead...` : 'Verifying...') 
+                : 'Submit Program'}
             </button>
           </div>
         </div>
@@ -496,7 +520,11 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               {running ? (
                 <div className="flex items-center gap-2.5 text-indigo-300 py-6">
                   <RefreshCw className="h-4 w-4 animate-spin text-indigo-400" />
-                  <span>Compiling {isCLanguage ? 'C' : 'Java'} source and running binary...</span>
+                  <span>
+                    {queuePosition !== null && queuePosition > 0 
+                      ? `Waiting in queue... (${queuePosition} request${queuePosition === 1 ? '' : 's'} ahead of you)` 
+                      : `Compiling ${isCLanguage ? 'C' : 'Java'} source and running binary...`}
+                  </span>
                 </div>
               ) : consoleOutput || consoleError || exitCode !== null ? (
                 <>

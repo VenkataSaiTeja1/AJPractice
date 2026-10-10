@@ -3,6 +3,7 @@ import { exec, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { compilerQueueState } from '@/lib/queue-state';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +16,11 @@ function acquireWorker(): Promise<void> {
   return new Promise((resolve) => {
     if (activeWorkers < MAX_CONCURRENT_TASKS) {
       activeWorkers++;
+      compilerQueueState.c.active = activeWorkers;
       resolve();
     } else {
       workerQueue.push(resolve);
+      compilerQueueState.c.waiting = workerQueue.length;
     }
   });
 }
@@ -25,9 +28,11 @@ function acquireWorker(): Promise<void> {
 function releaseWorker() {
   if (workerQueue.length > 0) {
     const next = workerQueue.shift();
+    compilerQueueState.c.waiting = workerQueue.length;
     if (next) next();
   } else {
     activeWorkers--;
+    compilerQueueState.c.active = activeWorkers;
   }
 }
 // ---------------------------------------------------------
