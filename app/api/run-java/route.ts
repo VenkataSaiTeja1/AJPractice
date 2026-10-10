@@ -59,9 +59,8 @@ export async function POST(req: Request) {
 
     if (localJavaAvailable) {
       // METHOD A: Execute locally on the hosting server/PC using local JDK (free & unlimited)
-      try {
-        const runId = crypto.randomUUID();
-        executionDir = path.join(process.cwd(), '.temp_runs', runId);
+      const runId = crypto.randomUUID();
+      executionDir = path.join(process.cwd(), '.temp_runs', runId);
         fs.mkdirSync(executionDir, { recursive: true });
 
         const sourceFilePath = path.join(executionDir, 'Main.java');
@@ -161,7 +160,6 @@ export async function POST(req: Request) {
             output: runResult.stdout + runResult.stderr
           }
         });
-      }
 
     } else {
       // METHOD B: Execute via JDoodle API (for serverless environments like Vercel with no JDK)
