@@ -79,6 +79,8 @@ function cleanup(dir: string) {
 
 export async function POST(req: Request) {
   let executionDir = '';
+
+  await acquireWorker(); // Limit concurrency for the ENTIRE endpoint (Local + Cloud APIs)
   try {
     const { code, stdin = '' } = await req.json();
 
@@ -125,20 +127,18 @@ export async function POST(req: Request) {
     const localGccCmd = await getLocalGccCommand();
 
     if (localGccCmd) {
-      await acquireWorker(); // Wait for an available worker slot to prevent server crash
-      try {
-        const runId = crypto.randomUUID();
-        executionDir = path.join(process.cwd(), '.temp_runs_c', runId);
-        fs.mkdirSync(executionDir, { recursive: true });
+      const runId = crypto.randomUUID();
+      executionDir = path.join(process.cwd(), '.temp_runs_c', runId);
+      fs.mkdirSync(executionDir, { recursive: true });
 
-        const sourceFilePath = path.join(executionDir, 'main.c');
-        fs.writeFileSync(sourceFilePath, code);
-        const isWindows = process.platform === 'win32';
-        const outputBinary = isWindows ? 'main.exe' : 'main';
+      const sourceFilePath = path.join(executionDir, 'main.c');
+      fs.writeFileSync(sourceFilePath, code);
+      const isWindows = process.platform === 'win32';
+      const outputBinary = isWindows ? 'main.exe' : 'main';
 
-        // Compile C source code with -O2 and -lm (math library)
-        const compileCmd = `${localGccCmd} -O2 main.c -o ${outputBinary} -lm`;
-        console.log(`[C Runner] Compiling main.c locally: ${compileCmd}`);
+      // Compile C source code with -O2 and -lm (math library)
+      const compileCmd = `${localGccCmd} -O2 main.c -o ${outputBinary} -lm`;
+      console.log(`[C Runner] Compiling main.c locally: ${compileCmd}`);
 
         const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
           exec(compileCmd, { cwd: executionDir, timeout: 10000 }, (error, stdout, stderr) => {
@@ -234,9 +234,6 @@ export async function POST(req: Request) {
             output: runResult.stdout + (runResult.stderr ? '\n' + runResult.stderr : '')
           }
         });
-      } finally {
-        releaseWorker();
-      }
     }
 
     // METHOD C: Wandbox Cloud Compiler API (Fast, Free, No API Key, GCC 13.2.0)
@@ -393,5 +390,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     if (executionDir) cleanup(executionDir);
     return NextResponse.json({ error: error.message || 'Execution failed' }, { status: 500 });
+  } finally {
+    releaseWorker();
   }
 }

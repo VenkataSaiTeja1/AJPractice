@@ -43,6 +43,8 @@ function isCommandAvailable(command: string): Promise<boolean> {
 
 export async function POST(req: Request) {
   let executionDir = '';
+
+  await acquireWorker(); // Limit concurrency for the ENTIRE endpoint (Local + Cloud APIs)
   try {
     const { code, stdin = '' } = await req.json();
 
@@ -57,7 +59,6 @@ export async function POST(req: Request) {
 
     if (localJavaAvailable) {
       // METHOD A: Execute locally on the hosting server/PC using local JDK (free & unlimited)
-      await acquireWorker();
       try {
         const runId = crypto.randomUUID();
         executionDir = path.join(process.cwd(), '.temp_runs', runId);
@@ -160,8 +161,6 @@ export async function POST(req: Request) {
             output: runResult.stdout + runResult.stderr
           }
         });
-      } finally {
-        releaseWorker();
       }
 
     } else {
@@ -262,6 +261,8 @@ export async function POST(req: Request) {
   } catch (error: any) {
     if (executionDir) cleanup(executionDir);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  } finally {
+    releaseWorker();
   }
 }
 
