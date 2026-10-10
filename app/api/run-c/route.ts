@@ -223,6 +223,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           code: code,
           compiler: 'gcc-13.2.0-c',
+          "compiler-option-raw": "-lm\n-O2",
           stdin: stdin || ''
         }),
         signal: wandboxController.signal
@@ -331,6 +332,7 @@ export async function POST(req: Request) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           files: [{ name: 'main.c', content: code }],
+          command: "gcc main.c -lm -O2 && ./a.out",
           stdin: stdin || ''
         }),
         signal: glotController.signal
