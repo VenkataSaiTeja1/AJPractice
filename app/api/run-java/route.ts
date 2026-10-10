@@ -1,10 +1,36 @@
 import { NextResponse } from 'next/server';
 import { exec, spawn } from 'child_process';
-
-export const dynamic = 'force-dynamic';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+
+export const dynamic = 'force-dynamic';
+
+// --- Concurrency Limiter (Prevents Render OOM/Crashes) ---
+const MAX_CONCURRENT_TASKS = 2; // Limit parallel compilation to prevent server from going offline
+let activeWorkers = 0;
+const workerQueue: (() => void)[] = [];
+
+function acquireWorker(): Promise<void> {
+  return new Promise((resolve) => {
+    if (activeWorkers < MAX_CONCURRENT_TASKS) {
+      activeWorkers++;
+      resolve();
+    } else {
+      workerQueue.push(resolve);
+    }
+  });
+}
+
+function releaseWorker() {
+  if (workerQueue.length > 0) {
+    const next = workerQueue.shift();
+    if (next) next();
+  } else {
+    activeWorkers--;
+  }
+}
+// ---------------------------------------------------------
 
 // Helper to check if a CLI command is available on the system
 function isCommandAvailable(command: string): Promise<boolean> {
@@ -31,107 +57,112 @@ export async function POST(req: Request) {
 
     if (localJavaAvailable) {
       // METHOD A: Execute locally on the hosting server/PC using local JDK (free & unlimited)
-      const runId = crypto.randomUUID();
-      executionDir = path.join(process.cwd(), '.temp_runs', runId);
-      fs.mkdirSync(executionDir, { recursive: true });
+      await acquireWorker();
+      try {
+        const runId = crypto.randomUUID();
+        executionDir = path.join(process.cwd(), '.temp_runs', runId);
+        fs.mkdirSync(executionDir, { recursive: true });
 
-      const sourceFilePath = path.join(executionDir, 'Main.java');
-      fs.writeFileSync(sourceFilePath, code);
+        const sourceFilePath = path.join(executionDir, 'Main.java');
+        fs.writeFileSync(sourceFilePath, code);
 
-      // Compile code
-      console.log(`[Java Runner] Compiling Main.java locally...`);
-      const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
-        exec('javac -J-XX:+TieredCompilation -J-XX:TieredStopAtLevel=1 Main.java', { cwd: executionDir, timeout: 15000 }, (error, stdout, stderr) => {
-          if (error) {
-            const isTimeout = error.killed || error.signal === 'SIGTERM';
-            const errorMsg = isTimeout 
-              ? 'Compilation timed out! The server was too slow to build the Java code. Please try again.' 
-              : (stderr || error.message || 'Compilation failed.');
-            console.warn(`[Java Runner] Compilation failed. Code: ${error.code || 1}`);
-            resolve({ 
-              code: error.code || 1, 
-              stderr: errorMsg
-            });
-          } else {
-            console.log(`[Java Runner] Compilation succeeded.`);
-            resolve({ code: 0, stderr: '' });
-          }
+        // Compile code
+        console.log(`[Java Runner] Compiling Main.java locally...`);
+        const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
+          exec('javac -J-XX:+TieredCompilation -J-XX:TieredStopAtLevel=1 Main.java', { cwd: executionDir, timeout: 15000 }, (error, stdout, stderr) => {
+            if (error) {
+              const isTimeout = error.killed || error.signal === 'SIGTERM';
+              const errorMsg = isTimeout 
+                ? 'Compilation timed out! The server was too slow to build the Java code. Please try again.' 
+                : (stderr || error.message || 'Compilation failed.');
+              console.warn(`[Java Runner] Compilation failed. Code: ${error.code || 1}`);
+              resolve({ 
+                code: error.code || 1, 
+                stderr: errorMsg
+              });
+            } else {
+              console.log(`[Java Runner] Compilation succeeded.`);
+              resolve({ code: 0, stderr: '' });
+            }
+          });
         });
-      });
 
-      if (compileResult.code !== 0) {
+        if (compileResult.code !== 0) {
+          cleanup(executionDir);
+          return NextResponse.json({
+            language: 'java',
+            version: 'local-jdk',
+            run: {
+              stdout: '',
+              stderr: compileResult.stderr,
+              code: compileResult.code,
+              signal: null,
+              output: compileResult.stderr
+            }
+          });
+        }
+
+        // Execute code
+        console.log(`[Java Runner] Spawning java Main process...`);
+        const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
+          const child = spawn('java', ['-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: executionDir });
+
+          let stdoutData = '';
+          let stderrData = '';
+
+          child.stdout.on('data', (chunk) => { stdoutData += chunk.toString(); });
+          child.stderr.on('data', (chunk) => { stderrData += chunk.toString(); });
+
+          if (stdin && stdin.trim() !== '') {
+            child.stdin.write(stdin);
+            child.stdin.end();
+          } else {
+            child.stdin.end();
+          }
+
+          let timedOut = false;
+          const timeoutId = setTimeout(() => {
+            timedOut = true;
+            console.warn(`[Java Runner] Execution timed out after 15s. Killing process.`);
+            child.kill('SIGKILL');
+          }, 15000);
+
+          child.on('close', (exitCode) => {
+            clearTimeout(timeoutId);
+            console.log(`[Java Runner] Execution finished with exit code: ${exitCode}`);
+            resolve({
+              stdout: stdoutData,
+              stderr: timedOut ? 'Execution timed out! The Java program took longer than 15 seconds to run.' : stderrData,
+              code: exitCode
+            });
+          });
+
+          child.on('error', (err) => {
+            clearTimeout(timeoutId);
+            resolve({
+              stdout: '',
+              stderr: `Execution error: ${err.message}`,
+              code: 1
+            });
+          });
+        });
+
         cleanup(executionDir);
+
         return NextResponse.json({
           language: 'java',
           version: 'local-jdk',
           run: {
-            stdout: '',
-            stderr: compileResult.stderr,
-            code: compileResult.code,
-            signal: null,
-            output: compileResult.stderr
+            stdout: runResult.stdout,
+            stderr: runResult.stderr,
+            code: runResult.code === null ? 124 : runResult.code,
+            signal: runResult.code === null ? 'SIGKILL' : null,
+            output: runResult.stdout + runResult.stderr
           }
         });
+      } finally {
+        releaseWorker();
       }
-
-      // Execute code
-      console.log(`[Java Runner] Spawning java Main process...`);
-      const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
-        const child = spawn('java', ['-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: executionDir });
-
-        let stdoutData = '';
-        let stderrData = '';
-
-        child.stdout.on('data', (chunk) => { stdoutData += chunk.toString(); });
-        child.stderr.on('data', (chunk) => { stderrData += chunk.toString(); });
-
-        if (stdin && stdin.trim() !== '') {
-          child.stdin.write(stdin);
-          child.stdin.end();
-        } else {
-          child.stdin.end();
-        }
-
-        let timedOut = false;
-        const timeoutId = setTimeout(() => {
-          timedOut = true;
-          console.warn(`[Java Runner] Execution timed out after 15s. Killing process.`);
-          child.kill('SIGKILL');
-        }, 15000);
-
-        child.on('close', (exitCode) => {
-          clearTimeout(timeoutId);
-          console.log(`[Java Runner] Execution finished with exit code: ${exitCode}`);
-          resolve({
-            stdout: stdoutData,
-            stderr: timedOut ? 'Execution timed out! The Java program took longer than 15 seconds to run.' : stderrData,
-            code: exitCode
-          });
-        });
-
-        child.on('error', (err) => {
-          clearTimeout(timeoutId);
-          resolve({
-            stdout: '',
-            stderr: `Execution error: ${err.message}`,
-            code: 1
-          });
-        });
-      });
-
-      cleanup(executionDir);
-
-      return NextResponse.json({
-        language: 'java',
-        version: 'local-jdk',
-        run: {
-          stdout: runResult.stdout,
-          stderr: runResult.stderr,
-          code: runResult.code === null ? 124 : runResult.code,
-          signal: runResult.code === null ? 'SIGKILL' : null,
-          output: runResult.stdout + runResult.stderr
-        }
-      });
 
     } else {
       // METHOD B: Execute via JDoodle API (for serverless environments like Vercel with no JDK)

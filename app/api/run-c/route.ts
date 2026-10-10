@@ -6,6 +6,32 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+// --- Concurrency Limiter (Prevents Render OOM/Crashes) ---
+const MAX_CONCURRENT_TASKS = 2; // Limit parallel compilation to prevent server from going offline
+let activeWorkers = 0;
+const workerQueue: (() => void)[] = [];
+
+function acquireWorker(): Promise<void> {
+  return new Promise((resolve) => {
+    if (activeWorkers < MAX_CONCURRENT_TASKS) {
+      activeWorkers++;
+      resolve();
+    } else {
+      workerQueue.push(resolve);
+    }
+  });
+}
+
+function releaseWorker() {
+  if (workerQueue.length > 0) {
+    const next = workerQueue.shift();
+    if (next) next();
+  } else {
+    activeWorkers--;
+  }
+}
+// ---------------------------------------------------------
+
 function isCommandAvailable(command: string): Promise<boolean> {
   return new Promise((resolve) => {
     exec(`${command} --version`, (error) => {
@@ -99,57 +125,59 @@ export async function POST(req: Request) {
     const localGccCmd = await getLocalGccCommand();
 
     if (localGccCmd) {
-      const runId = crypto.randomUUID();
-      executionDir = path.join(process.cwd(), '.temp_runs_c', runId);
-      fs.mkdirSync(executionDir, { recursive: true });
+      await acquireWorker(); // Wait for an available worker slot to prevent server crash
+      try {
+        const runId = crypto.randomUUID();
+        executionDir = path.join(process.cwd(), '.temp_runs_c', runId);
+        fs.mkdirSync(executionDir, { recursive: true });
 
-      const sourceFilePath = path.join(executionDir, 'main.c');
-      fs.writeFileSync(sourceFilePath, code);
-      const isWindows = process.platform === 'win32';
-      const outputBinary = isWindows ? 'main.exe' : 'main';
+        const sourceFilePath = path.join(executionDir, 'main.c');
+        fs.writeFileSync(sourceFilePath, code);
+        const isWindows = process.platform === 'win32';
+        const outputBinary = isWindows ? 'main.exe' : 'main';
 
-      // Compile C source code with -O2 and -lm (math library)
-      const compileCmd = `${localGccCmd} -O2 main.c -o ${outputBinary} -lm`;
-      console.log(`[C Runner] Compiling main.c locally: ${compileCmd}`);
+        // Compile C source code with -O2 and -lm (math library)
+        const compileCmd = `${localGccCmd} -O2 main.c -o ${outputBinary} -lm`;
+        console.log(`[C Runner] Compiling main.c locally: ${compileCmd}`);
 
-      const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
-        exec(compileCmd, { cwd: executionDir, timeout: 10000 }, (error, stdout, stderr) => {
-          if (error) {
-            const isTimeout = error.killed || error.signal === 'SIGTERM';
-            const errorMsg = isTimeout 
-              ? 'Compilation timed out! The C compiler took too long to build. Please check for macro or header issues.' 
-              : (stderr || error.message || 'Compilation failed.');
-            resolve({ code: error.code || 1, stderr: errorMsg });
-          } else {
-            resolve({ code: 0, stderr: '' });
-          }
+        const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
+          exec(compileCmd, { cwd: executionDir, timeout: 10000 }, (error, stdout, stderr) => {
+            if (error) {
+              const isTimeout = error.killed || error.signal === 'SIGTERM';
+              const errorMsg = isTimeout 
+                ? 'Compilation timed out! The C compiler took too long to build. Please check for macro or header issues.' 
+                : (stderr || error.message || 'Compilation failed.');
+              resolve({ code: error.code || 1, stderr: errorMsg });
+            } else {
+              resolve({ code: 0, stderr: '' });
+            }
+          });
         });
-      });
 
-      if (compileResult.code !== 0) {
-        cleanup(executionDir);
-        return NextResponse.json({
-          language: 'c',
-          version: 'local-gcc',
-          run: {
-            stdout: '',
-            stderr: compileResult.stderr,
-            code: compileResult.code,
-            signal: null,
-            output: compileResult.stderr
-          }
-        });
-      }
+        if (compileResult.code !== 0) {
+          cleanup(executionDir);
+          return NextResponse.json({
+            language: 'c',
+            version: 'local-gcc',
+            run: {
+              stdout: '',
+              stderr: compileResult.stderr,
+              code: compileResult.code,
+              signal: null,
+              output: compileResult.stderr
+            }
+          });
+        }
 
-      // Execute compiled C executable
-      console.log(`[C Runner] Running binary ./${outputBinary}...`);
-      const binaryPath = isWindows ? path.join(executionDir, outputBinary) : `./${outputBinary}`;
+        // Execute compiled C executable
+        console.log(`[C Runner] Running binary ./${outputBinary}...`);
+        const binaryPath = isWindows ? path.join(executionDir, outputBinary) : `./${outputBinary}`;
 
-      const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
-        const child = spawn(binaryPath, [], { cwd: executionDir });
+        const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
+          const child = spawn(binaryPath, [], { cwd: executionDir });
 
-        let stdoutData = '';
-        let stderrData = '';
+          let stdoutData = '';
+          let stderrData = '';
 
         child.stdout.on('data', (chunk) => { stdoutData += chunk.toString(); });
         child.stderr.on('data', (chunk) => { stderrData += chunk.toString(); });
@@ -184,28 +212,31 @@ export async function POST(req: Request) {
         });
 
         child.on('error', (err) => {
-          clearTimeout(timeoutId);
-          resolve({
-            stdout: '',
-            stderr: `Execution error: ${err.message}`,
-            code: 1
+            clearTimeout(timeoutId);
+            resolve({
+              stdout: '',
+              stderr: `Execution error: ${err.message}`,
+              code: 1
+            });
           });
         });
-      });
 
-      cleanup(executionDir);
+        cleanup(executionDir);
 
-      return NextResponse.json({
-        language: 'c',
-        version: 'local-gcc',
-        run: {
-          stdout: runResult.stdout,
-          stderr: runResult.stderr,
-          code: runResult.code === null ? 124 : runResult.code,
-          signal: runResult.code === null ? 'SIGKILL' : null,
-          output: runResult.stdout + (runResult.stderr ? '\n' + runResult.stderr : '')
-        }
-      });
+        return NextResponse.json({
+          language: 'c',
+          version: 'local-gcc',
+          run: {
+            stdout: runResult.stdout,
+            stderr: runResult.stderr,
+            code: runResult.code === null ? 124 : runResult.code,
+            signal: runResult.code === null ? 'SIGKILL' : null,
+            output: runResult.stdout + (runResult.stderr ? '\n' + runResult.stderr : '')
+          }
+        });
+      } finally {
+        releaseWorker();
+      }
     }
 
     // METHOD C: Wandbox Cloud Compiler API (Fast, Free, No API Key, GCC 13.2.0)
