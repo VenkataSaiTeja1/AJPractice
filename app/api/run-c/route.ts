@@ -3,39 +3,9 @@ import { exec, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { compilerQueueState } from '@/lib/queue-state';
+import { acquireWorker, releaseWorker } from '@/lib/queue-state';
 
 export const dynamic = 'force-dynamic';
-
-// --- Concurrency Limiter (Prevents Render OOM/Crashes) ---
-const MAX_CONCURRENT_TASKS = 2; // Limit parallel compilation to prevent server from going offline
-let activeWorkers = 0;
-const workerQueue: (() => void)[] = [];
-
-function acquireWorker(): Promise<void> {
-  return new Promise((resolve) => {
-    if (activeWorkers < MAX_CONCURRENT_TASKS) {
-      activeWorkers++;
-      compilerQueueState.c.active = activeWorkers;
-      resolve();
-    } else {
-      workerQueue.push(resolve);
-      compilerQueueState.c.waiting = workerQueue.length;
-    }
-  });
-}
-
-function releaseWorker() {
-  if (workerQueue.length > 0) {
-    const next = workerQueue.shift();
-    compilerQueueState.c.waiting = workerQueue.length;
-    if (next) next();
-  } else {
-    activeWorkers--;
-    compilerQueueState.c.active = activeWorkers;
-  }
-}
-// ---------------------------------------------------------
 
 function isCommandAvailable(command: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -85,7 +55,7 @@ function cleanup(dir: string) {
 export async function POST(req: Request) {
   let executionDir = '';
 
-  await acquireWorker(); // Limit concurrency for the ENTIRE endpoint (Local + Cloud APIs)
+  await acquireWorker('c'); // Limit concurrency for the ENTIRE endpoint (Local + Cloud APIs)
   try {
     const { code, stdin = '' } = await req.json();
 
@@ -396,6 +366,6 @@ export async function POST(req: Request) {
     if (executionDir) cleanup(executionDir);
     return NextResponse.json({ error: error.message || 'Execution failed' }, { status: 500 });
   } finally {
-    releaseWorker();
+    releaseWorker('c');
   }
 }

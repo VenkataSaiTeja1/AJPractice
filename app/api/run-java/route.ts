@@ -3,39 +3,9 @@ import { exec, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { compilerQueueState } from '@/lib/queue-state';
+import { acquireWorker, releaseWorker } from '@/lib/queue-state';
 
 export const dynamic = 'force-dynamic';
-
-// --- Concurrency Limiter (Prevents Render OOM/Crashes) ---
-const MAX_CONCURRENT_TASKS = 2; // Limit parallel compilation to prevent server from going offline
-let activeWorkers = 0;
-const workerQueue: (() => void)[] = [];
-
-function acquireWorker(): Promise<void> {
-  return new Promise((resolve) => {
-    if (activeWorkers < MAX_CONCURRENT_TASKS) {
-      activeWorkers++;
-      compilerQueueState.java.active = activeWorkers;
-      resolve();
-    } else {
-      workerQueue.push(resolve);
-      compilerQueueState.java.waiting = workerQueue.length;
-    }
-  });
-}
-
-function releaseWorker() {
-  if (workerQueue.length > 0) {
-    const next = workerQueue.shift();
-    compilerQueueState.java.waiting = workerQueue.length;
-    if (next) next();
-  } else {
-    activeWorkers--;
-    compilerQueueState.java.active = activeWorkers;
-  }
-}
-// ---------------------------------------------------------
 
 // Helper to check if a CLI command is available on the system
 function isCommandAvailable(command: string): Promise<boolean> {
@@ -49,7 +19,7 @@ function isCommandAvailable(command: string): Promise<boolean> {
 export async function POST(req: Request) {
   let executionDir = '';
 
-  await acquireWorker(); // Limit concurrency for the ENTIRE endpoint (Local + Cloud APIs)
+  await acquireWorker('java'); // Limit concurrency for the ENTIRE endpoint (Local + Cloud APIs)
   try {
     const { code, stdin = '' } = await req.json();
 
@@ -265,7 +235,7 @@ export async function POST(req: Request) {
     if (executionDir) cleanup(executionDir);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   } finally {
-    releaseWorker();
+    releaseWorker('java');
   }
 }
 
