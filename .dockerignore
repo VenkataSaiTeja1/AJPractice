@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.temp_runs
+.temp_runs_c
+*.log
+.env.local
