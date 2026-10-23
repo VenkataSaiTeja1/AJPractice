@@ -1022,10 +1022,25 @@ export default function TeacherAdminDashboard() {
     <div className="admin-dashboard flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative">
       
       {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Portal By VVS</h1>
-          <p className="text-xs text-slate-500 mt-1 font-normal">Monitor student scores, curate curriculum exercises, and register student credentials.</p>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Faculty Command Console
+            </span>
+            <span className="text-[10px] font-mono text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 rounded-full">
+              C &amp; DS Core Lab
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+              Portal By VVS
+            </span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
+            &gt; Real-time monitoring, auto-grading metrics &amp; C/DS curriculum distribution
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button
