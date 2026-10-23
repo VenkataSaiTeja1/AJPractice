@@ -3,22 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginStudent, loginFaculty, getCurrentSession } from '@/lib/supabase';
-import { GraduationCap, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { GraduationCap, ArrowRight, Eye, EyeOff, Code2, ArrowLeftRight, Binary, Cpu } from 'lucide-react';
 import ThemeToggle from '@/components/theme-toggle';
 
-const CODE_SNIPPETS = [
-  { text: 'int main() {',         top: '8%',  left: '3%',  duration: '14s', delay: '0s',   opacity: 0.09, size: '13px' },
-  { text: 'struct Node *next;',   top: '18%', left: '78%', duration: '18s', delay: '2s',   opacity: 0.07, size: '12px' },
-  { text: 'for(i=0;i<n;i++)',     top: '32%', left: '88%', duration: '12s', delay: '1s',   opacity: 0.10, size: '14px' },
-  { text: 'malloc(sizeof(Node))', top: '55%', left: '5%',  duration: '16s', delay: '3s',   opacity: 0.08, size: '12px' },
-  { text: 'printf("%d", arr[i])', top: '70%', left: '82%', duration: '20s', delay: '0.5s', opacity: 0.07, size: '13px' },
-  { text: 'int arr[100];',        top: '82%', left: '10%', duration: '11s', delay: '4s',   opacity: 0.09, size: '14px' },
-  { text: 'void swap(int *a, int *b)', top: '12%', left: '55%', duration: '15s', delay: '2.5s', opacity: 0.06, size: '11px' },
-  { text: '*ptr = &var;',         top: '45%', left: '72%', duration: '13s', delay: '1.5s', opacity: 0.10, size: '13px' },
-  { text: 'scanf("%d",&n);',      top: '90%', left: '60%', duration: '17s', delay: '0s',   opacity: 0.08, size: '12px' },
-  { text: 'return 0;',            top: '62%', left: '40%', duration: '9s',  delay: '3.5s', opacity: 0.12, size: '15px' },
-  { text: '#include <stdio.h>',   top: '3%',  left: '38%', duration: '19s', delay: '1s',   opacity: 0.07, size: '12px' },
-  { text: 'stack.push(x);',       top: '76%', left: '28%', duration: '10s', delay: '2s',   opacity: 0.09, size: '13px' },
+// Floating badges for background
+const FLOATING_CHIPS = [
+  { text: 'void swap(int *a, int *b)', top: '6%', left: '8%', delay: '0s', dur: '16s' },
+  { text: 'temp = *a; *a = *b; *b = temp;', top: '16%', right: '10%', delay: '2s', dur: '14s' },
+  { text: 'int arr[] = { 64, 34, 25, 12 };', bottom: '14%', left: '6%', delay: '1s', dur: '18s' },
+  { text: 'struct Node *next = malloc(...);', bottom: '8%', right: '8%', delay: '3s', dur: '15s' },
+  { text: 'arr[i] ^= arr[j] ^= arr[i] ^= arr[j];', top: '48%', left: '3%', delay: '4s', dur: '20s' },
+  { text: 'if (arr[j] > arr[j+1]) swap();', top: '42%', right: '4%', delay: '2.5s', dur: '17s' },
+  { text: 'printf("Memory: 0x%08x\\n", &arr);', bottom: '26%', right: '14%', delay: '0.5s', dur: '19s' },
+  { text: 'int *ptr = &arr[0]; *(ptr+1) = 99;', top: '28%', left: '12%', delay: '3.5s', dur: '15s' }
 ];
 
 export default function LoginPage() {
@@ -37,12 +34,46 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Blinking cursor state
+  // Blinking terminal cursor
   const [cursorOn, setCursorOn] = useState(true);
 
+  // Live Array Swap Simulation
+  const [arrayData, setArrayData] = useState<number[]>([42, 17, 89, 23, 56, 31]);
+  const [swappingPair, setSwappingPair] = useState<[number, number]>([1, 3]);
+  const [swapCount, setSwapCount] = useState(1);
+  const [lastSwapDesc, setLastSwapDesc] = useState('arr[1] (17) ⇄ arr[3] (23)');
+
+  // Linked list node highlight
+  const [activeNode, setActiveNode] = useState(1);
+
   useEffect(() => {
-    const interval = setInterval(() => setCursorOn(v => !v), 530);
-    return () => clearInterval(interval);
+    const curInterval = setInterval(() => setCursorOn(v => !v), 530);
+    return () => clearInterval(curInterval);
+  }, []);
+
+  // Interval for live array value swapping simulation
+  useEffect(() => {
+    const swapInterval = setInterval(() => {
+      setArrayData(prev => {
+        const next = [...prev];
+        const i = Math.floor(Math.random() * next.length);
+        let j = Math.floor(Math.random() * next.length);
+        while (j === i) {
+          j = Math.floor(Math.random() * next.length);
+        }
+        const valI = next[i];
+        const valJ = next[j];
+        next[i] = valJ;
+        next[j] = valI;
+        setSwappingPair([i, j]);
+        setLastSwapDesc(`arr[${i}] (${valI}) ⇄ arr[${j}] (${valJ})`);
+        setSwapCount(c => c + 1);
+        return next;
+      });
+      setActiveNode(n => (n + 1) % 4);
+    }, 2400);
+
+    return () => clearInterval(swapInterval);
   }, []);
 
   useEffect(() => {
@@ -64,10 +95,10 @@ export default function LoginPage() {
 
     try {
       if (loginMode === 'student') {
-        const profile = await loginStudent(rollNumber, password);
+        await loginStudent(rollNumber, password);
         router.push('/dashboard');
       } else {
-        const profile = await loginFaculty(email, password);
+        await loginFaculty(email, password);
         router.push('/admin');
       }
     } catch (err: any) {
@@ -79,141 +110,365 @@ export default function LoginPage() {
 
   return (
     <>
-      {/* ── Keyframe animations ────────────────────────────────── */}
+      {/* ── Keyframe Animations ─────────────────────────────────── */}
       <style>{`
-        @keyframes floatSnippet {
-          0%   { transform: translateY(0px) translateX(0px); opacity: var(--op); }
-          33%  { transform: translateY(-18px) translateX(8px); opacity: calc(var(--op) * 1.3); }
-          66%  { transform: translateY(10px) translateX(-6px); opacity: calc(var(--op) * 0.7); }
-          100% { transform: translateY(0px) translateX(0px); opacity: var(--op); }
+        @keyframes floatCard {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50%       { transform: translateY(-12px) rotate(0.5deg); }
         }
-        @keyframes pulseOrb {
-          0%, 100% { transform: scale(1); opacity: 0.55; }
-          50%       { transform: scale(1.12); opacity: 0.75; }
+        @keyframes floatReverse {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50%       { transform: translateY(14px) rotate(-0.5deg); }
         }
-        @keyframes neonPulse {
-          0%, 100% { opacity: 1; }
-          50%       { opacity: 0.6; }
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 10px rgba(0,255,136,0.3)); }
+          50%       { opacity: 1; filter: drop-shadow(0 0 20px rgba(0,212,255,0.6)); }
         }
-        @keyframes scanline {
+        @keyframes swapHighlight {
+          0%, 100% { transform: scale(1); }
+          50%       { transform: scale(1.08); }
+        }
+        @keyframes matrixScroll {
           0%   { background-position: 0 0; }
-          100% { background-position: 0 100%; }
+          100% { background-position: 50px 50px; }
         }
-        .neon-top-border {
-          background: linear-gradient(90deg, #00ff88, #00d4ff, #6366f1);
-          animation: neonPulse 3s ease-in-out infinite;
+        @keyframes neonLinePulse {
+          0%, 100% { opacity: 0.9; }
+          50%       { opacity: 0.4; }
         }
-        .snippet-float {
-          animation: floatSnippet var(--dur) ease-in-out var(--delay) infinite;
+        .animate-float-slow {
+          animation: floatCard 12s ease-in-out infinite;
         }
-        .orb-pulse {
-          animation: pulseOrb 6s ease-in-out infinite;
+        .animate-float-reverse {
+          animation: floatReverse 14s ease-in-out infinite;
+        }
+        .animate-neon-pulse {
+          animation: neonLinePulse 3s ease-in-out infinite;
         }
       `}</style>
 
-      {/* ── Full-screen background ─────────────────────────────── */}
+      {/* ── Fullscreen Interactive Viewport ─────────────────────── */}
       <div
-        className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden"
+        className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden select-none"
         style={{
-          backgroundColor: '#0a0f1e',
+          backgroundColor: '#070b14',
           backgroundImage: `
-            linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px)
+            radial-gradient(circle at 50% 50%, rgba(13, 27, 42, 0.9) 0%, #050811 100%),
+            linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 212, 255, 0.05) 1px, transparent 1px)
           `,
-          backgroundSize: '40px 40px',
+          backgroundSize: '100% 100%, 36px 36px, 36px 36px',
         }}
       >
-        {/* Light-mode overlay */}
-        <div className="absolute inset-0 bg-blue-50/90 dark:bg-transparent transition-colors duration-500 pointer-events-none" />
-
-        {/* Glowing orbs */}
+        {/* Subtle Ambient Light Orbs */}
         <div
-          className="orb-pulse pointer-events-none absolute -top-40 -left-40 h-[520px] w-[520px] rounded-full"
+          className="pointer-events-none absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full"
           style={{
-            background: 'radial-gradient(circle, rgba(0,255,136,0.18) 0%, transparent 70%)',
-            filter: 'blur(60px)',
+            background: 'radial-gradient(circle, rgba(0,255,136,0.18) 0%, transparent 65%)',
+            filter: 'blur(70px)',
           }}
         />
         <div
-          className="orb-pulse pointer-events-none absolute -bottom-40 -right-40 h-[480px] w-[480px] rounded-full"
+          className="pointer-events-none absolute -bottom-40 -right-40 h-[600px] w-[600px] rounded-full"
           style={{
-            background: 'radial-gradient(circle, rgba(0,212,255,0.15) 0%, transparent 70%)',
-            filter: 'blur(60px)',
-            animationDelay: '2s',
+            background: 'radial-gradient(circle, rgba(0,212,255,0.18) 0%, transparent 65%)',
+            filter: 'blur(70px)',
           }}
         />
         <div
-          className="orb-pulse pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[300px] w-[300px] rounded-full"
+          className="pointer-events-none absolute top-1/4 right-1/4 h-[350px] w-[350px] rounded-full"
           style={{
-            background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)',
             filter: 'blur(80px)',
-            animationDelay: '4s',
           }}
         />
 
-        {/* ── Floating code snippets ─────────────────────────── */}
-        {CODE_SNIPPETS.map((s, i) => (
-          <span
+        {/* ═════════════════════════════════════════════════════════ */}
+        {/* ── BACKGROUND WIDGET 1: LIVE ARRAY VALUE SWAPPER (TOP-LEFT) ── */}
+        {/* ═════════════════════════════════════════════════════════ */}
+        <div
+          className="animate-float-slow pointer-events-none absolute top-6 left-6 hidden xl:block w-[390px] rounded-2xl border border-emerald-500/30 bg-[#0b1326]/85 backdrop-blur-md p-4.5 shadow-2xl text-slate-200 z-0"
+          style={{
+            boxShadow: '0 0 30px rgba(0,255,136,0.12), inset 0 0 20px rgba(0,255,136,0.03)',
+          }}
+        >
+          {/* Card Header */}
+          <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-[11px] font-mono font-bold tracking-wider text-emerald-400 flex items-center gap-1.5 uppercase">
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                Live Array Swap Visualizer
+              </span>
+            </div>
+            <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded">
+              cycle #{swapCount}
+            </span>
+          </div>
+
+          {/* Visual Array Cells with Swapping Animation */}
+          <div className="space-y-1.5 mb-3">
+            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 px-1">
+              <span>Memory buffer: int arr[6]</span>
+              <span className="text-emerald-400 font-semibold">{lastSwapDesc}</span>
+            </div>
+
+            <div className="grid grid-cols-6 gap-1.5 pt-1">
+              {arrayData.map((val, idx) => {
+                const isSwapping = swappingPair.includes(idx);
+                return (
+                  <div
+                    key={idx}
+                    className={`relative flex flex-col items-center justify-center p-2 rounded-xl border font-mono transition-all duration-500 ${
+                      isSwapping
+                        ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300 shadow-[0_0_15px_rgba(0,255,136,0.4)] scale-105'
+                        : 'border-slate-800 bg-[#0f1b33] text-slate-300'
+                    }`}
+                  >
+                    <span className="text-[9px] text-slate-500">[{idx}]</span>
+                    <span className="text-base font-extrabold tracking-tight mt-0.5">{val}</span>
+                    {isSwapping && (
+                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* C Code Snippet for Current Swap */}
+          <div className="rounded-xl border border-slate-800 bg-[#070d1a] p-2.5 font-mono text-[11px] leading-relaxed">
+            <div className="text-slate-500">// Real-time in-place pointer swap</div>
+            <div>
+              <span className="text-purple-400">void</span> <span className="text-blue-400">swap</span>(
+              <span className="text-cyan-300">int</span> <span className="text-emerald-400">*a</span>,{' '}
+              <span className="text-cyan-300">int</span> <span className="text-emerald-400">*b</span>) &#123;
+            </div>
+            <div className="pl-3.5 text-slate-300">
+              <span className="text-cyan-300">int</span> temp = <span className="text-emerald-400">*a</span>;
+            </div>
+            <div className="pl-3.5 text-slate-300">
+              <span className="text-emerald-400">*a</span> = <span className="text-emerald-400">*b</span>;
+            </div>
+            <div className="pl-3.5 text-slate-300">
+              <span className="text-emerald-400">*b</span> = temp;
+            </div>
+            <div>&#125;</div>
+          </div>
+        </div>
+
+        {/* ═════════════════════════════════════════════════════════ */}
+        {/* ── BACKGROUND WIDGET 2: C FUNCTION POINTER CARD (TOP-RIGHT) ── */}
+        {/* ═════════════════════════════════════════════════════════ */}
+        <div
+          className="animate-float-reverse pointer-events-none absolute top-6 right-6 hidden xl:block w-[370px] rounded-2xl border border-cyan-500/30 bg-[#0b1326]/85 backdrop-blur-md p-4.5 shadow-2xl text-slate-200 z-0"
+          style={{
+            boxShadow: '0 0 30px rgba(0,212,255,0.12), inset 0 0 20px rgba(0,212,255,0.03)',
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-cyan-500/20 pb-2 mb-3">
+            <div className="flex items-center gap-2">
+              <Code2 className="h-4 w-4 text-cyan-400" />
+              <span className="text-[11px] font-mono font-bold tracking-wider text-cyan-400 uppercase">
+                core_algorithm.c
+              </span>
+            </div>
+            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded">
+              GCC 13.2 -O2
+            </span>
+          </div>
+
+          {/* Syntax Highlighted C Function */}
+          <div className="rounded-xl border border-slate-800 bg-[#070d1a] p-3 font-mono text-[11px] leading-relaxed space-y-1">
+            <div className="text-slate-500">// Partition function for QuickSort</div>
+            <div>
+              <span className="text-purple-400">int</span> <span className="text-blue-400">partition</span>(
+              <span className="text-cyan-300">int</span> arr[], <span className="text-cyan-300">int</span> low,{' '}
+              <span className="text-cyan-300">int</span> high) &#123;
+            </div>
+            <div className="pl-3.5 text-slate-300">
+              <span className="text-cyan-300">int</span> pivot = arr[high];
+            </div>
+            <div className="pl-3.5 text-slate-300">
+              <span className="text-cyan-300">int</span> i = (low - <span className="text-amber-400">1</span>);
+            </div>
+            <div className="pl-3.5 text-slate-300">
+              <span className="text-purple-400">for</span> (<span className="text-cyan-300">int</span> j = low; j &lt; high; j++) &#123;
+            </div>
+            <div className="pl-7 text-slate-300">
+              <span className="text-purple-400">if</span> (arr[j] &lt; pivot) &#123;
+            </div>
+            <div className="pl-10 text-emerald-400">
+              i++; swap(&amp;arr[i], &amp;arr[j]);
+            </div>
+            <div className="pl-7 text-slate-300">&#125;</div>
+            <div className="pl-3.5 text-slate-300">&#125;</div>
+            <div className="pl-3.5 text-emerald-400">
+              swap(&amp;arr[i + <span className="text-amber-400">1</span>], &amp;arr[high]);
+            </div>
+            <div className="pl-3.5 text-slate-300">
+              <span className="text-purple-400">return</span> (i + <span className="text-amber-400">1</span>);
+            </div>
+            <div>&#125;</div>
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-2.5 px-1">
+            <span>Stack Frame: 0x7ffe42</span>
+            <span className="text-cyan-400">Complexity: O(n log n)</span>
+          </div>
+        </div>
+
+        {/* ═════════════════════════════════════════════════════════ */}
+        {/* ── BACKGROUND WIDGET 3: LINKED LIST POINTERS (BOTTOM-LEFT) ── */}
+        {/* ═════════════════════════════════════════════════════════ */}
+        <div
+          className="animate-float-reverse pointer-events-none absolute bottom-6 left-6 hidden lg:block w-[410px] rounded-2xl border border-indigo-500/30 bg-[#0b1326]/85 backdrop-blur-md p-4 shadow-2xl text-slate-200 z-0"
+          style={{
+            boxShadow: '0 0 30px rgba(99,102,241,0.12), inset 0 0 20px rgba(99,102,241,0.03)',
+          }}
+        >
+          <div className="flex items-center justify-between border-b border-indigo-500/20 pb-2 mb-2.5">
+            <span className="text-[11px] font-mono font-bold tracking-wider text-indigo-400 flex items-center gap-1.5 uppercase">
+              <Cpu className="h-3.5 w-3.5" />
+              Singly Linked List Nodes &amp; Pointers
+            </span>
+            <span className="text-[10px] font-mono text-slate-400">heap: malloc()</span>
+          </div>
+
+          {/* Node chain graphic */}
+          <div className="flex items-center gap-2 overflow-x-auto py-1">
+            {[10, 25, 42, 88].map((val, idx) => (
+              <React.Fragment key={idx}>
+                <div
+                  className={`flex items-center rounded-xl border p-1.5 font-mono text-xs transition-all duration-300 ${
+                    activeNode === idx
+                      ? 'border-indigo-400 bg-indigo-500/20 text-indigo-200 shadow-[0_0_12px_rgba(99,102,241,0.5)]'
+                      : 'border-slate-800 bg-[#0f1b33] text-slate-300'
+                  }`}
+                >
+                  <span className="px-2 font-bold text-white">{val}</span>
+                  <span className="border-l border-slate-700 pl-1.5 pr-1 text-[10px] text-indigo-400">●next</span>
+                </div>
+                {idx < 3 ? (
+                  <span className="text-cyan-400 font-bold text-xs">➔</span>
+                ) : (
+                  <span className="text-[10px] font-mono text-rose-400 border border-rose-500/30 bg-rose-950/40 px-1.5 py-0.5 rounded">
+                    NULL
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          <div className="mt-2.5 rounded-lg border border-slate-800 bg-[#070d1a] px-2.5 py-1.5 font-mono text-[10.5px] text-slate-400 flex items-center justify-between">
+            <span>struct Node *head = malloc(sizeof(Node));</span>
+            <span className="text-emerald-400">head-&gt;data = 10;</span>
+          </div>
+        </div>
+
+        {/* ═════════════════════════════════════════════════════════ */}
+        {/* ── BACKGROUND WIDGET 4: XOR VALUE SWAP TRICK (BOTTOM-RIGHT) ── */}
+        {/* ═════════════════════════════════════════════════════════ */}
+        <div
+          className="animate-float-slow pointer-events-none absolute bottom-6 right-6 hidden lg:block w-[360px] rounded-2xl border border-amber-500/30 bg-[#0b1326]/85 backdrop-blur-md p-4 shadow-2xl text-slate-200 z-0"
+          style={{
+            boxShadow: '0 0 30px rgba(245,158,11,0.12), inset 0 0 20px rgba(245,158,11,0.03)',
+          }}
+        >
+          <div className="flex items-center justify-between border-b border-amber-500/20 pb-2 mb-2.5">
+            <span className="text-[11px] font-mono font-bold tracking-wider text-amber-400 flex items-center gap-1.5 uppercase">
+              <Binary className="h-3.5 w-3.5" />
+              Bitwise XOR Swap (Zero Temp Memory)
+            </span>
+            <span className="text-[10px] font-mono text-emerald-400">O(1) Aux Space</span>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-[#070d1a] p-2.5 font-mono text-[11px] leading-relaxed space-y-1">
+            <div className="text-slate-400">
+              <span className="text-cyan-300">int</span> x = <span className="text-amber-400">15</span>, y = <span className="text-amber-400">27</span>;
+            </div>
+            <div className="text-emerald-400 pl-2">x = x ^ y; <span className="text-slate-600">// Step 1: XOR combo</span></div>
+            <div className="text-cyan-400 pl-2">y = x ^ y; <span className="text-slate-600">// Step 2: y gets original x</span></div>
+            <div className="text-indigo-400 pl-2">x = x ^ y; <span className="text-slate-600">// Step 3: x gets original y</span></div>
+            <div className="text-[10.5px] text-slate-400 pt-1 border-t border-slate-800/80 flex items-center justify-between">
+              <span>Result: x == 27, y == 15</span>
+              <span className="text-emerald-400 font-bold">✓ Swapped</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Additional floating C syntax badges ─────────────────── */}
+        {FLOATING_CHIPS.map((chip, i) => (
+          <div
             key={i}
-            className="snippet-float pointer-events-none select-none absolute font-mono dark:text-[#00ff88] text-indigo-700 dark:opacity-100"
+            className="pointer-events-none select-none absolute hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-800/80 bg-[#091122]/70 backdrop-blur-sm text-[11px] font-mono text-slate-300 shadow-lg z-0"
             style={{
-              top: s.top,
-              left: s.left,
-              fontSize: s.size,
-              opacity: s.opacity,
-              '--op': s.opacity,
-              '--dur': s.duration,
-              '--delay': s.delay,
-              whiteSpace: 'nowrap',
-              letterSpacing: '0.04em',
-            } as React.CSSProperties}
+              top: chip.top,
+              left: chip.left,
+              right: chip.right,
+              bottom: chip.bottom,
+              animation: `floatCard ${chip.dur} ease-in-out ${chip.delay} infinite`,
+            }}
           >
-            {s.text}
-          </span>
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400/80" />
+            <span>{chip.text}</span>
+          </div>
         ))}
 
-        {/* ── Central card ──────────────────────────────────────── */}
-        <div className="w-full max-w-md relative z-10">
+        {/* ═════════════════════════════════════════════════════════ */}
+        {/* ── CENTRAL LOGIN CARD (FOREGROUND - Z-20) ─────────────── */}
+        {/* ═════════════════════════════════════════════════════════ */}
+        <div className="w-full max-w-md relative z-20 my-auto">
           <div
-            className="relative rounded-2xl overflow-hidden border dark:border-[#1e3a5f]/60 border-blue-200/80 dark:bg-[#0d1b2a]/90 bg-white/80 backdrop-blur-xl shadow-2xl"
-            style={{ boxShadow: '0 0 60px rgba(0,255,136,0.08), 0 0 120px rgba(0,212,255,0.05)' }}
+            className="relative rounded-3xl overflow-hidden border border-cyan-500/40 bg-[#0a1224]/92 backdrop-blur-2xl shadow-2xl"
+            style={{
+              boxShadow: '0 0 50px rgba(0, 255, 136, 0.15), 0 0 100px rgba(0, 212, 255, 0.1), inset 0 0 30px rgba(0, 255, 136, 0.04)',
+            }}
           >
-            {/* Neon top border */}
-            <div className="neon-top-border absolute top-0 inset-x-0 h-[2px]" />
+            {/* Glowing neon top stripe */}
+            <div
+              className="animate-neon-pulse absolute top-0 inset-x-0 h-[3px]"
+              style={{
+                background: 'linear-gradient(90deg, #00ff88 0%, #00d4ff 50%, #6366f1 100%)',
+              }}
+            />
 
-            {/* ThemeToggle */}
-            <div className="absolute right-4 top-4 z-20">
+            {/* Top Right Theme Toggle */}
+            <div className="absolute right-4 top-4 z-30">
               <ThemeToggle />
             </div>
 
-            <div className="px-8 pt-8 pb-7">
-              {/* ── Logo / Branding ──────────────────────────── */}
-              <div className="flex flex-col items-center text-center mb-8 pt-1">
-                {/* Terminal icon */}
+            <div className="px-7 sm:px-9 pt-8 pb-7">
+              {/* Header Branding */}
+              <div className="flex flex-col items-center text-center mb-7 pt-1">
                 <div
-                  className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border dark:border-[#00ff88]/30 border-indigo-300/60 dark:bg-[#0a1628] bg-indigo-50"
-                  style={{ boxShadow: '0 0 20px rgba(0,255,136,0.15)' }}
+                  className="mb-3.5 flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-500/40 bg-[#070e1c] shadow-[0_0_25px_rgba(0,255,136,0.25)]"
                 >
-                  <GraduationCap className="h-8 w-8 dark:text-[#00ff88] text-indigo-600" />
+                  <GraduationCap className="h-8 w-8 text-emerald-400" />
                 </div>
 
-                {/* Title with blinking cursor */}
-                <h1 className="text-xl font-bold tracking-tight dark:text-white text-slate-900 font-mono flex items-center gap-1">
-                  <span className="dark:text-[#00ff88] text-indigo-500 mr-1">&gt;_</span>
-                  AJ Practice Portal
+                <h1 className="text-2xl font-black tracking-tight text-white font-mono flex items-center justify-center gap-1.5">
+                  <span className="text-emerald-400">&gt;_</span>
+                  <span>AJ Practice Portal</span>
                   <span
-                    className="inline-block w-[2px] h-5 dark:bg-[#00ff88] bg-indigo-500 ml-1 align-middle"
+                    className="inline-block w-[3px] h-5 bg-emerald-400 ml-0.5 align-middle"
                     style={{ opacity: cursorOn ? 1 : 0, transition: 'opacity 0.1s' }}
                   />
                 </h1>
-                <p className="text-xs dark:text-[#00d4ff]/70 text-indigo-500/80 mt-2 font-mono tracking-widest uppercase">
-                  C Programming &amp; Data Structures Lab
-                </p>
+
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/30 bg-cyan-950/40 text-[11px] font-mono text-cyan-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  C Programming &amp; Data Structures Arena
+                </div>
               </div>
 
-              {/* ── Mode Switcher ────────────────────────────── */}
-              <div className="grid grid-cols-2 gap-1.5 p-1 dark:bg-[#060e1c] bg-slate-100 rounded-xl border dark:border-[#1e3a5f]/50 border-slate-200 mb-6">
-                {(['student', 'faculty'] as const).map((mode) => {
+              {/* Mode Switcher Tabs */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#050a14] rounded-xl border border-slate-800 mb-6">
+                {(['student', 'faculty'] as const).map(mode => {
                   const active = loginMode === mode;
                   return (
                     <button
@@ -224,148 +479,155 @@ export default function LoginPage() {
                         setErrorMessage('');
                         setPassword('');
                       }}
-                      className="relative py-2.5 text-xs font-semibold rounded-lg transition-all duration-300 cursor-pointer font-mono uppercase tracking-wider"
+                      className="py-2.5 text-xs font-bold rounded-lg transition-all duration-300 cursor-pointer font-mono uppercase tracking-wider flex items-center justify-center gap-1.5"
                       style={
                         active
                           ? {
-                              background: 'linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,212,255,0.10))',
-                              border: '1px solid rgba(0,255,136,0.35)',
+                              background: 'linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,212,255,0.15))',
+                              border: '1px solid rgba(0,255,136,0.5)',
                               color: '#00ff88',
-                              boxShadow: '0 0 12px rgba(0,255,136,0.15)',
+                              boxShadow: '0 0 16px rgba(0,255,136,0.25)',
                             }
                           : {
                               border: '1px solid transparent',
-                              color: undefined,
+                              color: '#64748b',
                             }
                       }
                     >
-                      <span className={active ? '' : 'dark:text-slate-500 text-slate-400 hover:dark:text-slate-300 hover:text-slate-600'}>
-                        {mode === 'student' ? '// Student' : '/* Faculty */'}
-                      </span>
+                      <span>{mode === 'student' ? '// Student' : '/* Faculty */'}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* ── Error message ────────────────────────────── */}
+              {/* Error Message */}
               {errorMessage && (
                 <div
-                  className="mb-5 rounded-xl p-3.5 text-sm font-mono flex items-start gap-2 dark:bg-red-950/30 bg-red-50 dark:border-red-900/50 border border-red-200"
-                  style={{ color: '#ff6b6b' }}
+                  className="mb-5 rounded-xl p-3.5 text-xs font-mono flex items-start gap-2 bg-red-950/40 border border-red-500/40 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
                 >
-                  <span className="mt-0.5 shrink-0 text-[10px] opacity-70">ERR!</span>
-                  {errorMessage}
+                  <span className="font-bold text-red-400">ERR_AUTH:</span>
+                  <span>{errorMessage}</span>
                 </div>
               )}
 
-              {/* ── Form ─────────────────────────────────────── */}
-              <form onSubmit={handleSubmit} className="space-y-5">
-
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4.5">
                 {loginMode === 'student' ? (
                   <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest dark:text-[#00d4ff]/70 text-indigo-500 font-mono">
-                      <span className="dark:text-[#00ff88] text-indigo-400">&gt;</span> Roll Number
+                    <label className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-cyan-300 font-mono">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-emerald-400">&gt;</span> Roll Number
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-normal">e.g. 26FE1A4351</span>
                     </label>
                     <input
                       type="text"
                       required
                       value={rollNumber}
-                      onChange={(e) => setRollNumber(e.target.value)}
-                      placeholder="Enter your roll number"
-                      className="w-full rounded-xl border dark:border-[#1e3a5f] border-slate-300 dark:bg-[#0a1628] bg-slate-50 px-4 py-3 text-sm font-mono dark:text-slate-100 text-slate-900 dark:placeholder-slate-600 placeholder-slate-400 outline-none transition-all duration-200 dark:focus:border-[#00ff88] focus:border-indigo-400 dark:focus:ring-1 dark:focus:ring-[#00ff88]/30 focus:ring-2 focus:ring-indigo-100"
+                      onChange={e => setRollNumber(e.target.value)}
+                      placeholder="Enter registered roll number"
+                      className="w-full rounded-xl border border-slate-700 bg-[#070e1c] px-4 py-3 text-sm font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                     />
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest dark:text-[#00d4ff]/70 text-indigo-500 font-mono">
-                      <span className="dark:text-[#00ff88] text-indigo-400">&gt;</span> Faculty Email
+                    <label className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-cyan-300 font-mono">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-emerald-400">&gt;</span> Faculty Email
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-normal">administrator</span>
                     </label>
                     <input
                       type="email"
                       required
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email address"
-                      className="w-full rounded-xl border dark:border-[#1e3a5f] border-slate-300 dark:bg-[#0a1628] bg-slate-50 px-4 py-3 text-sm font-mono dark:text-slate-100 text-slate-900 dark:placeholder-slate-600 placeholder-slate-400 outline-none transition-all duration-200 dark:focus:border-[#00ff88] focus:border-indigo-400 dark:focus:ring-1 dark:focus:ring-[#00ff88]/30 focus:ring-2 focus:ring-indigo-100"
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="Enter faculty email"
+                      className="w-full rounded-xl border border-slate-700 bg-[#070e1c] px-4 py-3 text-sm font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                     />
                   </div>
                 )}
 
-                {/* Password */}
+                {/* Password Input */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest dark:text-[#00d4ff]/70 text-indigo-500 font-mono">
-                    <span className="dark:text-[#00ff88] text-indigo-400">&gt;</span> Password
+                  <label className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-cyan-300 font-mono">
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-emerald-400">&gt;</span> Security Password
+                    </span>
                   </label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      className="w-full rounded-xl border dark:border-[#1e3a5f] border-slate-300 dark:bg-[#0a1628] bg-slate-50 px-4 py-3 pr-12 text-sm font-mono dark:text-slate-100 text-slate-900 dark:placeholder-slate-600 placeholder-slate-400 outline-none transition-all duration-200 dark:focus:border-[#00ff88] focus:border-indigo-400 dark:focus:ring-1 dark:focus:ring-[#00ff88]/30 focus:ring-2 focus:ring-indigo-100"
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Enter account password"
+                      className="w-full rounded-xl border border-slate-700 bg-[#070e1c] px-4 py-3 pr-12 text-sm font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 dark:text-slate-500 text-slate-400 dark:hover:text-[#00ff88] hover:text-indigo-500 transition-colors duration-150 cursor-pointer"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Submit */}
+                {/* Submit Action Button */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold font-mono tracking-wider transition-all duration-300 cursor-pointer active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full mt-3 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-extrabold font-mono tracking-wider transition-all duration-300 cursor-pointer active:scale-[0.98] disabled:opacity-60 shadow-lg"
                   style={{
-                    background: loading
-                      ? 'linear-gradient(90deg, #00cc70, #00aad4, #4f52d4)'
-                      : 'linear-gradient(90deg, #00ff88, #00d4ff, #6366f1)',
-                    color: '#0a0f1e',
-                    boxShadow: loading ? 'none' : '0 0 0 rgba(0,255,136,0)',
+                    background: 'linear-gradient(90deg, #00ff88 0%, #00d4ff 50%, #6366f1 100%)',
+                    color: '#050a14',
+                    boxShadow: '0 0 25px rgba(0,255,136,0.35)',
                   }}
                   onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 24px rgba(0,255,136,0.4), 0 0 48px rgba(0,212,255,0.2)';
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                      '0 0 35px rgba(0,255,136,0.6), 0 0 60px rgba(0,212,255,0.4)';
                   }}
                   onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 rgba(0,255,136,0)';
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 25px rgba(0,255,136,0.35)';
                   }}
                 >
                   {loading ? (
                     <>
-                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4 text-[#050a14]" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Authenticating...
+                      <span>Authenticating Credentials...</span>
                     </>
                   ) : (
                     <>
-                      ./login --exec
+                      <span>EXECUTE &amp; ENTER ARENA</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
                 </button>
               </form>
 
-              {/* ── Footer hint ──────────────────────────────── */}
-              <div className="mt-7 border-t dark:border-[#1e3a5f]/50 border-slate-200 pt-5 text-center">
-                <p className="text-[11px] dark:text-slate-600 text-slate-400 font-mono leading-relaxed">
+              {/* Terminal Tip */}
+              <div className="mt-6 border-t border-slate-800/80 pt-4 text-center">
+                <p className="text-[11px] text-slate-500 font-mono leading-relaxed">
                   {loginMode === 'student'
-                    ? '/* Account provisioned by faculty. Use assigned roll number. */'
-                    : '// Use your registered faculty administrator email.'}
+                    ? '/* Default password is your roll number unless updated */'
+                    : '// Authorized faculty access portal only.'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Attribution */}
-          <p className="text-center text-[10px] dark:text-slate-700 text-slate-400 mt-5 font-mono tracking-widest">
-            Portal By VVS &middot; Secure Login &middot; <span className="dark:text-[#00ff88]/40 text-indigo-400/60">v2.0</span>
-          </p>
+          {/* Attribution Tag */}
+          <div className="flex items-center justify-center gap-3 mt-4 text-[10px] font-mono text-slate-500">
+            <span>Portal By VVS</span>
+            <span>&bull;</span>
+            <span className="text-emerald-400/80">C &amp; DS Core Engine</span>
+            <span>&bull;</span>
+            <span>GCC Native</span>
+          </div>
         </div>
       </div>
     </>
