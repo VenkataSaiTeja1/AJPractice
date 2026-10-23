@@ -8,6 +8,7 @@ import {
   Search, Filter, Edit, CheckCircle, Clock, XCircle, RefreshCw, 
   Send, Plus, Trash, BookOpen, Key, Check, PlusCircle, LayoutGrid, BarChart2, CheckCircle2
 } from 'lucide-react';
+import MatrixBackground from '@/components/matrix-background';
 
 export default function TeacherAdminDashboard() {
   const router = useRouter();
@@ -1019,7 +1020,9 @@ export default function TeacherAdminDashboard() {
   });
 
   return (
-    <div className="admin-dashboard flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative">
+    <div className="admin-dashboard flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative overflow-hidden">
+      {/* Falling Green 0 and 1 Binary Matrix Rain */}
+      <MatrixBackground opacity={0.4} showCenterRing={false} />
       
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">

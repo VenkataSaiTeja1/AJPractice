@@ -9,6 +9,7 @@ import {
   Award, CheckCircle, Clock, XCircle, Code, HelpCircle, Server, 
   BookOpen, ChevronRight, BarChart3, Star, RefreshCw, Key, ShieldAlert 
 } from 'lucide-react';
+import MatrixBackground from '@/components/matrix-background';
 
 const units = [1, 2, 3, 4, 5];
 
@@ -434,7 +435,9 @@ export default function StudentDashboard() {
   const firstName = profile?.full_name?.split(' ')[0] || profile?.full_name || 'Student';
 
   return (
-    <div className="flex-1 w-full bg-[#090e1a] min-h-screen">
+    <div className="flex-1 w-full bg-[#070b14] min-h-screen relative overflow-hidden">
+      {/* Falling Green 0 and 1 Binary Matrix Rain */}
+      <MatrixBackground opacity={0.45} showCenterRing={false} />
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes glow-pulse {
@@ -456,7 +459,7 @@ export default function StudentDashboard() {
         .stat-glow-rose { filter: drop-shadow(0 0 8px rgba(251,113,133,0.5)); }
       `}</style>
 
-      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         {/* ── Hero Welcome Banner ─────────────────────────────────────────────── */}
         <div className="relative bg-[#0d1b2a] border border-[#1e3a5f]/50 rounded-2xl overflow-hidden shadow-2xl shadow-black/40">

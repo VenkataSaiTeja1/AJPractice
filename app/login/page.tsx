@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { loginStudent, loginFaculty, getCurrentSession } from '@/lib/supabase';
 import { GraduationCap, ArrowRight, Eye, EyeOff, Code2, ArrowLeftRight, Binary, Cpu } from 'lucide-react';
 import ThemeToggle from '@/components/theme-toggle';
+import MatrixBackground from '@/components/matrix-background';
 
 // Floating badges for background
 const FLOATING_CHIPS = [
@@ -152,14 +153,10 @@ export default function LoginPage() {
         className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden select-none"
         style={{
           backgroundColor: '#070b14',
-          backgroundImage: `
-            radial-gradient(circle at 50% 50%, rgba(13, 27, 42, 0.9) 0%, #050811 100%),
-            linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 212, 255, 0.05) 1px, transparent 1px)
-          `,
-          backgroundSize: '100% 100%, 36px 36px, 36px 36px',
         }}
       >
+        {/* Dynamic Falling Green 0 and 1 Matrix Rain + Cyber Ring */}
+        <MatrixBackground opacity={0.75} showCenterRing={true} />
         {/* Subtle Ambient Light Orbs */}
         <div
           className="pointer-events-none absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full"
