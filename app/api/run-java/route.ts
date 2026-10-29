@@ -77,16 +77,46 @@ export async function POST(req: Request) {
           });
         }
 
-        // Execute code
+        // Execute code with isolated environment
         console.log(`[Java Runner] Spawning java Main process...`);
+        const safeJavaEnv: NodeJS.ProcessEnv = {
+          NODE_ENV: 'production',
+          PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
+          LANG: 'C.UTF-8',
+          LC_ALL: 'C.UTF-8',
+        };
+
+        const MAX_OUTPUT_CHARS = 32768;
+        let javaOutputTruncated = false;
+
         const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
-          const child = spawn('java', ['-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: executionDir });
+          const child = spawn('java', ['-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { 
+            cwd: executionDir,
+            env: safeJavaEnv
+          });
 
           let stdoutData = '';
           let stderrData = '';
 
-          child.stdout.on('data', (chunk) => { stdoutData += chunk.toString(); });
-          child.stderr.on('data', (chunk) => { stderrData += chunk.toString(); });
+          child.stdout.on('data', (chunk) => {
+            if (stdoutData.length < MAX_OUTPUT_CHARS) {
+              stdoutData += chunk.toString();
+              if (stdoutData.length >= MAX_OUTPUT_CHARS) {
+                javaOutputTruncated = true;
+                stdoutData = stdoutData.slice(0, MAX_OUTPUT_CHARS);
+                try { child.kill('SIGKILL'); } catch (e) {}
+              }
+            }
+          });
+
+          child.stderr.on('data', (chunk) => {
+            if (stderrData.length < MAX_OUTPUT_CHARS) {
+              stderrData += chunk.toString();
+              if (stderrData.length >= MAX_OUTPUT_CHARS) {
+                stderrData = stderrData.slice(0, MAX_OUTPUT_CHARS);
+              }
+            }
+          });
 
           if (stdin && stdin.trim() !== '') {
             child.stdin.write(stdin);
@@ -99,15 +129,19 @@ export async function POST(req: Request) {
           const timeoutId = setTimeout(() => {
             timedOut = true;
             console.warn(`[Java Runner] Execution timed out after 15s. Killing process.`);
-            child.kill('SIGKILL');
+            try { child.kill('SIGKILL'); } catch (e) {}
           }, 15000);
 
           child.on('close', (exitCode) => {
             clearTimeout(timeoutId);
+            let errText = timedOut ? 'Execution timed out! The Java program took longer than 15 seconds to run.' : stderrData;
+            if (javaOutputTruncated) {
+              errText = (errText ? errText + '\n' : '') + 'Output limit exceeded! Program stopped to prevent server lockup.';
+            }
             console.log(`[Java Runner] Execution finished with exit code: ${exitCode}`);
             resolve({
               stdout: stdoutData,
-              stderr: timedOut ? 'Execution timed out! The Java program took longer than 15 seconds to run.' : stderrData,
+              stderr: errText,
               code: exitCode
             });
           });

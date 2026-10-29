@@ -42,6 +42,12 @@ function getLocalGccCommand(): Promise<string | null> {
   });
 }
 
+function sanitizeOutput(str: string): string {
+  if (!str) return '';
+  // Strip unprintable control characters except newline (\n), carriage return (\r), and tab (\t)
+  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+}
+
 function cleanup(dir: string) {
   try {
     if (fs.existsSync(dir)) {
@@ -111,8 +117,8 @@ export async function POST(req: Request) {
       const isWindows = process.platform === 'win32';
       const outputBinary = isWindows ? 'main.exe' : 'main';
 
-      // Compile C source code with -O2 and -lm (math library)
-      const compileCmd = `${localGccCmd} -O2 main.c -o ${outputBinary} -lm`;
+      // Compile C source code with -O2, -Wall, and -lm (math library)
+      const compileCmd = `${localGccCmd} -O2 -Wall main.c -o ${outputBinary} -lm`;
       console.log(`[C Runner] Compiling main.c locally: ${compileCmd}`);
 
         const compileResult = await new Promise<{ code: number; stderr: string }>((resolve) => {
@@ -144,49 +150,99 @@ export async function POST(req: Request) {
           });
         }
 
-        // Execute compiled C executable
+        // Execute compiled C executable with an isolated, minimal environment to prevent
+        // memory dumps from leaking server environment variables if student code loops out of bounds
         console.log(`[C Runner] Running binary ./${outputBinary}...`);
         const binaryPath = isWindows ? path.join(executionDir, outputBinary) : `./${outputBinary}`;
 
+        const safeEnv: NodeJS.ProcessEnv = {
+          NODE_ENV: 'production',
+          PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
+          LANG: 'C.UTF-8',
+          LC_ALL: 'C.UTF-8',
+        };
+
+        const MAX_OUTPUT_CHARS = 32768; // 32 KB limit to prevent browser/server lockup
+        let outputTruncated = false;
+
         const runResult = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
-          const child = spawn(binaryPath, [], { cwd: executionDir });
+          const child = spawn(binaryPath, [], { cwd: executionDir, env: safeEnv });
 
           let stdoutData = '';
           let stderrData = '';
 
-        child.stdout.on('data', (chunk) => { stdoutData += chunk.toString(); });
-        child.stderr.on('data', (chunk) => { stderrData += chunk.toString(); });
-
-        if (stdin && stdin.trim() !== '') {
-          child.stdin.write(stdin);
-          child.stdin.end();
-        } else {
-          child.stdin.end();
-        }
-
-        let timedOut = false;
-        const timeoutId = setTimeout(() => {
-          timedOut = true;
-          console.warn(`[C Runner] Execution timed out after 10s. Killing process.`);
-          child.kill('SIGKILL');
-        }, 10000);
-
-        child.on('close', (exitCode, signal) => {
-          clearTimeout(timeoutId);
-          let errOutput = stderrData;
-          if (timedOut) {
-            errOutput = 'Execution timed out! The C program ran longer than 10 seconds (check for infinite loops in while/for).';
-          } else if (signal === 'SIGSEGV') {
-            errOutput = 'Segmentation Fault (SIGSEGV): Memory access violation! Check pointers, array bounds, or uninitialized memory.';
-          }
-          resolve({
-            stdout: stdoutData,
-            stderr: errOutput,
-            code: exitCode
+          child.stdout.on('data', (chunk) => {
+            if (stdoutData.length < MAX_OUTPUT_CHARS) {
+              stdoutData += chunk.toString();
+              if (stdoutData.length >= MAX_OUTPUT_CHARS) {
+                outputTruncated = true;
+                stdoutData = stdoutData.slice(0, MAX_OUTPUT_CHARS);
+                try { child.kill('SIGKILL'); } catch (e) {}
+              }
+            }
           });
-        });
 
-        child.on('error', (err) => {
+          child.stderr.on('data', (chunk) => {
+            if (stderrData.length < MAX_OUTPUT_CHARS) {
+              stderrData += chunk.toString();
+              if (stderrData.length >= MAX_OUTPUT_CHARS) {
+                stderrData = stderrData.slice(0, MAX_OUTPUT_CHARS);
+              }
+            }
+          });
+
+          if (stdin && stdin.trim() !== '') {
+            child.stdin.write(stdin);
+            child.stdin.end();
+          } else {
+            child.stdin.end();
+          }
+
+          let timedOut = false;
+          const timeoutId = setTimeout(() => {
+            timedOut = true;
+            console.warn(`[C Runner] Execution timed out after 10s. Killing process.`);
+            try { child.kill('SIGKILL'); } catch (e) {}
+          }, 10000);
+
+          child.on('close', (exitCode, signal) => {
+            clearTimeout(timeoutId);
+            let cleanStdout = sanitizeOutput(stdoutData);
+            let errOutput = sanitizeOutput(stderrData);
+
+            if (outputTruncated) {
+              errOutput = (errOutput ? errOutput + '\n' : '') +
+                'Output limit exceeded! Program was stopped to prevent server lockup (check for infinite loops in while/for).';
+            }
+
+            if (timedOut) {
+              errOutput = 'Execution timed out! The C program ran longer than 10 seconds (check for infinite loops in while/for).';
+            } else if (signal === 'SIGSEGV') {
+              errOutput = 'Segmentation Fault (SIGSEGV): Memory access violation!\n' +
+                'Your program attempted to read or write memory outside its allocated boundary.\n\n' +
+                'Common causes:\n' +
+                '• Reverse loop incrementing instead of decrementing (e.g. for(int i = n-1; i >= 0; i++) with i++ instead of i--)\n' +
+                '• Array index out of bounds (accessing s[i] when i >= array size or i < 0)\n' +
+                '• Accessing uninitialized or NULL pointers (*ptr)\n' +
+                '• Missing null-terminator (\'\\0\') in string manipulation';
+
+              if (cleanStdout.length > 300) {
+                cleanStdout = cleanStdout.slice(0, 100) + '\n[... Output truncated due to segmentation fault ...]';
+              }
+            } else if (signal === 'SIGFPE') {
+              errOutput = 'Floating Point Exception (SIGFPE): Division by zero or integer overflow occurred in your program.';
+            } else if (signal === 'SIGABRT') {
+              errOutput = 'Aborted (SIGABRT): Program aborted, possibly due to a failed assert() or corrupted heap memory.';
+            }
+
+            resolve({
+              stdout: cleanStdout,
+              stderr: errOutput,
+              code: exitCode ?? (signal ? 139 : 1)
+            });
+          });
+
+          child.on('error', (err) => {
             clearTimeout(timeoutId);
             resolve({
               stdout: '',
