@@ -690,6 +690,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
       <AiTutorDrawer
         currentCode={code}
         errorOutput={consoleError || (gradeResult?.status !== 'passed' ? gradeResult?.feedback : '')}
+        testFailures={gradeResult?.status !== 'passed' && gradeResult?.feedback ? [{ expected: '', actual: gradeResult.feedback }] : []}
         triggerExplanation={triggerAiExplanation}
         onExplanationConsumed={() => setTriggerAiExplanation(false)}
       />

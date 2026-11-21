@@ -1,7 +1,12 @@
 // Unified AI & Rule-Based Heuristics Service for Student Tutor & Faculty Analytics
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+function getGroqKey(): string {
+  return (process.env.GROQ_API_KEY || '').trim();
+}
+
+function getGeminiKey(): string {
+  return (process.env.GEMINI_API_KEY || '').trim();
+}
 
 export interface RuleAnalysisResult {
   hasMatch: boolean;
@@ -22,7 +27,82 @@ export function analyzeCRuleBased(
   const cleanCode = code || '';
   const cleanError = errorOutput || '';
 
-  // 1. Reverse loop with i++ instead of i--
+  // 1. GCC: Undeclared identifier with "did you mean 'i'?" suggestion (Common Typo)
+  const undeclaredTypoMatch = cleanError.match(/error:\s*'([^']+)'\s*undeclared[^;]*;\s*did you mean\s*'([^']+)'\?/i);
+  if (undeclaredTypoMatch) {
+    const wrongVar = undeclaredTypoMatch[1];
+    const suggestedVar = undeclaredTypoMatch[2];
+    const lineMatch = cleanError.match(/main\.c:(\d+):(?:\d+:)?/);
+    const lineNum = lineMatch ? `on line ${lineMatch[1]}` : '';
+    return {
+      hasMatch: true,
+      errorType: `Typo in Variable Name ('${wrongVar}')`,
+      lineSnippet: lineNum ? `Line ${lineMatch![1]}: '${wrongVar}'` : wrongVar,
+      explanation: `The compiler doesn't recognize \`${wrongVar}\` ${lineNum}. You likely made a typo and meant to type \`${suggestedVar}\`. In C, every identifier must be declared with its exact spelling before use.`,
+      hint: `Replace \`${wrongVar}\` with \`${suggestedVar}\` in your statement.`
+    };
+  }
+
+  // 2. GCC: General undeclared identifier (without suggestion)
+  const undeclaredGeneralMatch = cleanError.match(/error:\s*'([^']+)'\s*undeclared/i);
+  if (undeclaredGeneralMatch) {
+    const wrongVar = undeclaredGeneralMatch[1];
+    const lineMatch = cleanError.match(/main\.c:(\d+):(?:\d+:)?/);
+    const lineNum = lineMatch ? `on line ${lineMatch[1]}` : '';
+    return {
+      hasMatch: true,
+      errorType: `Undeclared Variable ('${wrongVar}')`,
+      lineSnippet: lineNum ? `Line ${lineMatch![1]}: '${wrongVar}'` : wrongVar,
+      explanation: `The identifier \`${wrongVar}\` is used ${lineNum} without being declared. In C, you must specify the data type (e.g. \`int ${wrongVar};\` or \`char ${wrongVar};\`) before using it.`,
+      hint: `Declare \`${wrongVar}\` with its proper data type at the top of your function, or check for spelling and case mistakes.`
+    };
+  }
+
+  // 3. GCC: Expected ';' before or after token
+  const expectedSemicolonMatch = cleanError.match(/error:\s*expected\s*['"]?;\s*['"]?\s*before\s*['"]?([^'"]+)['"]?/i);
+  if (expectedSemicolonMatch) {
+    const token = expectedSemicolonMatch[1];
+    const lineMatch = cleanError.match(/main\.c:(\d+):(?:\d+:)?/);
+    const lineNum = lineMatch ? lineMatch[1] : '';
+    return {
+      hasMatch: true,
+      errorType: 'Missing Semicolon (;)',
+      lineSnippet: lineNum ? `Near line ${lineNum} before '${token}'` : `Before '${token}'`,
+      explanation: `The compiler was expecting a semicolon \`;\` before \`${token}\` ${lineNum ? `around line ${lineNum}` : ''}. In C, every executable statement must terminate with a semicolon.`,
+      hint: `Check the line immediately before line ${lineNum || ''} and add the missing \`;\` at the end.`
+    };
+  }
+
+  // 4. GCC: Implicit declaration of function (missing #include)
+  const implicitFuncMatch = cleanError.match(/(?:warning|error):\s*implicit declaration of function\s*['"]?([a-zA-Z_]\w*)['"]?/i);
+  if (implicitFuncMatch) {
+    const funcName = implicitFuncMatch[1];
+    let header = '<stdlib.h>';
+    if (['pow', 'sqrt', 'ceil', 'floor', 'abs', 'fabs', 'sin', 'cos'].includes(funcName)) header = '<math.h>';
+    else if (['strlen', 'strcpy', 'strcmp', 'strcat', 'strncpy'].includes(funcName)) header = '<string.h>';
+    else if (['printf', 'scanf', 'fgets', 'puts', 'getchar'].includes(funcName)) header = '<stdio.h>';
+    else if (['malloc', 'free', 'calloc', 'realloc', 'exit'].includes(funcName)) header = '<stdlib.h>';
+
+    return {
+      hasMatch: true,
+      errorType: `Missing Header File for '${funcName}()'`,
+      lineSnippet: `#include ${header}`,
+      explanation: `You called \`${funcName}()\` without including its header declaration. The compiler needs to know its signature before you can call it.`,
+      hint: `Add \`#include ${header}\` at the very top of your main.c file.`
+    };
+  }
+
+  // 5. GCC: Subscripted value is neither array nor pointer
+  if (/subscripted value is neither array nor pointer/i.test(cleanError)) {
+    return {
+      hasMatch: true,
+      errorType: 'Invalid Array Indexing Subscript',
+      explanation: 'You tried to use `[...]` bracket indexing on a variable that was not declared as an array or pointer (for example, treating a regular `int` variable like an array).',
+      hint: 'Verify the variable declaration. If it is meant to hold multiple values, declare it as an array (e.g. `int a[100];`).'
+    };
+  }
+
+  // 6. Reverse loop with i++ instead of i-- (Source code pattern)
   const reverseLoopMatch = cleanCode.match(/for\s*\(\s*(?:int\s+)?([a-zA-Z_]\w*)\s*=\s*[^;]+;\s*\1\s*>=\s*0\s*;\s*\1\s*\+\+\s*\)/);
   if (reverseLoopMatch) {
     const varName = reverseLoopMatch[1];
@@ -35,11 +115,10 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 2. scanf without & operator for primitive variables
+  // 7. scanf without & operator for primitive variables
   const scanfPrimitiveMatch = cleanCode.match(/scanf\s*\(\s*"[^"]*%[d|i|f|c|u|x|ld|lf][^"]*"\s*,\s*([a-zA-Z_]\w*)\s*\)/);
   if (scanfPrimitiveMatch) {
     const varName = scanfPrimitiveMatch[1];
-    // Check if varName was declared as a pointer or array (e.g. char str[], int* ptr)
     const isArrayOrPtr = new RegExp(`(?:char|int|float|double)\\s*(?:\\*\\s*${varName}|${varName}\\s*\\[)`).test(cleanCode);
     if (!isArrayOrPtr) {
       return {
@@ -52,7 +131,7 @@ export function analyzeCRuleBased(
     }
   }
 
-  // 3. Accidental semicolon after if, for, or while
+  // 8. Accidental semicolon after if, for, or while
   const prematureSemicolonMatch = cleanCode.match(/(?:for|while|if)\s*\([^)]*\)\s*;/);
   if (prematureSemicolonMatch && !cleanCode.includes('do {')) {
     return {
@@ -64,7 +143,7 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 4. Insecure gets() usage
+  // 9. Insecure gets() usage
   if (/\bgets\s*\(/.test(cleanCode)) {
     return {
       hasMatch: true,
@@ -75,7 +154,7 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 5. Segmentation Fault / SIGSEGV
+  // 10. Segmentation Fault / SIGSEGV
   if (/Segmentation Fault|SIGSEGV|core dumped|exit code 139/i.test(cleanError)) {
     return {
       hasMatch: true,
@@ -85,7 +164,7 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 6. Floating Point Exception / SIGFPE
+  // 11. Floating Point Exception / SIGFPE
   if (/Floating Point Exception|SIGFPE|division by zero/i.test(cleanError)) {
     return {
       hasMatch: true,
@@ -95,7 +174,21 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 7. Output Mismatch Analysis (Test Case Failures)
+  // 12. Generic GCC error line matcher
+  const genericGccError = cleanError.match(/main\.c:(\d+):(?:\d+:)?\s*error:\s*([^\n]+)/i);
+  if (genericGccError) {
+    const line = genericGccError[1];
+    const msg = genericGccError[2].trim();
+    return {
+      hasMatch: true,
+      errorType: `Compiler Syntax Error (Line ${line})`,
+      lineSnippet: `Line ${line}: ${msg}`,
+      explanation: `The compiler failed on line ${line}: "${msg}".`,
+      hint: `Look at line ${line} in your main.c file and fix the syntax or declaration error indicated.`
+    };
+  }
+
+  // 13. Output Mismatch Analysis (Test Case Failures)
   if (testFailures.length > 0) {
     const firstFail = testFailures[0];
     const expected = (firstFail.expected || '').trim();
@@ -123,8 +216,8 @@ export function analyzeCRuleBased(
   return {
     hasMatch: false,
     errorType: 'General Logic or Syntax Issue',
-    explanation: 'No specific rule matched. A detailed AI analysis will evaluate your source code.',
-    hint: 'Review your variable initializations and loop boundary conditions.'
+    explanation: cleanError ? `The compiler reported an issue:\n${cleanError}` : 'Review your variable initializations and loop boundary conditions.',
+    hint: 'Check your algorithm logic, loop bounds, and variable declarations.'
   };
 }
 
@@ -135,6 +228,9 @@ async function callGroq(
   messages: { role: string; content: string }[],
   systemPrompt?: string
 ): Promise<string> {
+  const apiKey = getGroqKey();
+  if (!apiKey) throw new Error('No Groq API key available');
+
   const fullMessages = systemPrompt
     ? [{ role: 'system', content: systemPrompt }, ...messages]
     : messages;
@@ -146,7 +242,7 @@ async function callGroq(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`
+      'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
@@ -175,6 +271,9 @@ async function callGemini(
   messages: { role: string; content: string }[],
   systemPrompt?: string
 ): Promise<string> {
+  const apiKey = getGeminiKey();
+  if (!apiKey) throw new Error('No Gemini API key available');
+
   const contents = messages.map(m => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: m.content }]
@@ -197,8 +296,7 @@ async function callGemini(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
 
-  // Use Gemini 1.5 Flash
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -228,7 +326,8 @@ export async function executeAiQuery(
   fallbackText: string = ''
 ): Promise<{ text: string; provider: 'groq' | 'gemini' | 'rule_based' }> {
   // 1. Try Groq (Fastest, highest quality Llama 3.3 70B, 14,400 free req/day)
-  if (GROQ_API_KEY) {
+  const groqKey = getGroqKey();
+  if (groqKey) {
     try {
       const response = await callGroq(messages, systemPrompt);
       if (response && response.trim()) {
@@ -240,7 +339,8 @@ export async function executeAiQuery(
   }
 
   // 2. Try Gemini (Gemini 1.5 Flash, 1,500 free req/day)
-  if (GEMINI_API_KEY) {
+  const geminiKey = getGeminiKey();
+  if (geminiKey) {
     try {
       const response = await callGemini(messages, systemPrompt);
       if (response && response.trim()) {
