@@ -6,7 +6,8 @@ import { supabase, getCurrentSession } from '@/lib/supabase';
 import { 
   Users, ClipboardList, TrendingUp, AlertTriangle, Download, 
   Search, Filter, Edit, CheckCircle, Clock, XCircle, RefreshCw, 
-  Send, Plus, Trash, BookOpen, Key, Check, PlusCircle, LayoutGrid, BarChart2, CheckCircle2
+  Send, Plus, Trash, BookOpen, Key, Check, PlusCircle, LayoutGrid, BarChart2, CheckCircle2,
+  Sparkles, Bot, MessageSquare, Database
 } from 'lucide-react';
 import MatrixBackground from '@/components/matrix-background';
 
@@ -14,7 +15,19 @@ export default function TeacherAdminDashboard() {
   const router = useRouter();
 
   // Navigation state
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'tasks' | 'monitor'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'tasks' | 'monitor' | 'ai_copilot'>('overview');
+
+  // Faculty AI Copilot states
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessages, setAiMessages] = useState<any[]>([
+    {
+      id: 'welcome',
+      sender: 'assistant',
+      text: '👋 **Welcome, Professor!** I am your **VVS Faculty AI Copilot** connected directly to your live classroom database.\n\nAsk me anything in plain English, for example:\n• *"Which students haven\'t submitted any tasks yet?"*\n• *"Compare average scores of CAI vs CSD sections"*\n• *"Which tasks have the highest failure rates?"*\n• *"Give me an executive summary of class performance"*\n\nClick any prompt chip below or type your custom query!',
+      timestamp: 'Just now'
+    }
+  ]);
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -993,6 +1006,64 @@ export default function TeacherAdminDashboard() {
     document.body.removeChild(link);
   };
 
+  const handleSendAiQuery = async (queryText: string) => {
+    if (!queryText.trim() || aiLoading) return;
+
+    const userMessage = {
+      id: String(Date.now()),
+      sender: 'user',
+      text: queryText.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setAiMessages(prev => [...prev, userMessage]);
+    setAiQuery('');
+    setAiLoading(true);
+
+    try {
+      const res = await fetch('/api/ai/faculty-analyst', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: queryText.trim(),
+          facultyEmail: profile?.email,
+          facultyRole: profile?.role,
+          chatHistory: aiMessages.map(m => ({
+            role: m.sender === 'user' ? 'user' : 'assistant',
+            content: m.text
+          }))
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to process database query.');
+      }
+
+      const aiMessage = {
+        id: String(Date.now() + 1),
+        sender: 'assistant',
+        text: data.reply || 'Analysis completed.',
+        provider: data.provider,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setAiMessages(prev => [...prev, aiMessage]);
+    } catch (err: any) {
+      setAiMessages(prev => [
+        ...prev,
+        {
+          id: String(Date.now() + 1),
+          sender: 'assistant',
+          text: `⚠️ Query failed: ${err.message}`,
+          timestamp: 'Just now'
+        }
+      ]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'passed':
@@ -1089,6 +1160,17 @@ export default function TeacherAdminDashboard() {
           }`}
         >
           <div className="flex items-center gap-1.5"><BookOpen className="h-4 w-4" /> Curriculum Manager</div>
+        </button>
+        <button
+          onClick={() => setActiveTab('ai_copilot')}
+          className={`shrink-0 pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'ai_copilot' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-emerald-400 animate-pulse" />
+            AI Database Copilot
+          </div>
         </button>
       </div>
 
@@ -1890,6 +1972,161 @@ export default function TeacherAdminDashboard() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── AI DATABASE COPILOT TAB ────────────────────────────────────────── */}
+      {activeTab === 'ai_copilot' && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="relative rounded-2xl border border-emerald-500/30 bg-[#0d1b2a]/90 backdrop-blur-xl p-6 shadow-2xl overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-indigo-500" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live Supabase Intelligence Pipeline
+                  </span>
+                  <span className="text-[10px] font-mono text-cyan-400 border border-cyan-500/30 bg-cyan-950/40 px-2 py-0.5 rounded">
+                    Groq Llama 3.3 70B + Gemini Failover
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                  <Sparkles className="h-6 w-6 text-emerald-400" />
+                  Academic Intelligence Copilot
+                </h2>
+                <p className="text-xs text-slate-400 mt-1 font-mono">
+                  &gt; Query student rosters, submission stats, fail rates, and curriculum performance in natural language.
+                </p>
+              </div>
+
+              {/* Quick Stat Badges */}
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl border border-slate-800 bg-[#070e1a] px-3.5 py-2 text-center font-mono">
+                  <span className="text-[10px] text-slate-500 block">Roster</span>
+                  <span className="text-sm font-bold text-emerald-400">{students.length} Students</span>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#070e1a] px-3.5 py-2 text-center font-mono">
+                  <span className="text-[10px] text-slate-500 block">Exercises</span>
+                  <span className="text-sm font-bold text-cyan-400">{tasks.length} Tasks</span>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#070e1a] px-3.5 py-2 text-center font-mono">
+                  <span className="text-[10px] text-slate-500 block">Submissions</span>
+                  <span className="text-sm font-bold text-purple-400">{submissions.length} Logged</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Prompt Chips */}
+            <div className="mt-5 pt-4 border-t border-slate-800/80">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 block mb-2">
+                Suggested Faculty Queries:
+              </span>
+              <div className="flex flex-wrap gap-2 text-xs font-mono">
+                {[
+                  "Which students haven't submitted any tasks yet?",
+                  "Compare CAI vs CSD section average scores and completion rates",
+                  "Which syllabus tasks have the highest failure rates?",
+                  "List all students with fail rate higher than 50%",
+                  "Summarize overall class performance across Unit 1 and Unit 2",
+                  "Which C & DS topics are students struggling with the most?"
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSendAiQuery(chip)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700/80 bg-[#070e1a]/80 text-slate-300 hover:text-emerald-300 hover:border-emerald-500/40 hover:bg-emerald-950/20 transition-all cursor-pointer shadow-xs"
+                  >
+                    <span className="text-emerald-400">⚡</span>
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Chat Stream & Input Card */}
+          <div className="rounded-2xl border border-slate-800 bg-[#0d1b2a]/95 shadow-xl flex flex-col h-[600px] overflow-hidden">
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 font-mono text-xs leading-relaxed">
+              {aiMessages.map((msg: any) => (
+                <div
+                  key={msg.id}
+                  className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl p-4 shadow-lg ${
+                      msg.sender === 'user'
+                        ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-br-xs'
+                        : 'bg-[#070e1a] border border-slate-800 text-slate-200 rounded-bl-xs'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-700/40 pb-1.5 mb-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        {msg.sender === 'user' ? 'Professor Query' : 'AI Copilot Analyst'}
+                      </span>
+                      <span className="text-[9px] text-slate-500">{msg.timestamp}</span>
+                    </div>
+
+                    <div className="whitespace-pre-wrap space-y-1.5 leading-relaxed font-sans text-xs">
+                      {msg.text.split('\n').map((line: string, i: number) => {
+                        if (line.startsWith('### ')) {
+                          return <h4 key={i} className="text-sm font-bold text-emerald-400 mt-2 mb-1">{line.replace('### ', '')}</h4>;
+                        }
+                        if (line.startsWith('• ') || line.startsWith('- ')) {
+                          return <div key={i} className="pl-2 text-slate-300 font-mono text-xs">{line}</div>;
+                        }
+                        if (line.includes('|') && line.trim().startsWith('|')) {
+                          return <div key={i} className="font-mono text-[11px] text-cyan-300 bg-slate-900/60 p-1 rounded overflow-x-auto">{line}</div>;
+                        }
+                        return <p key={i}>{line}</p>;
+                      })}
+                    </div>
+
+                    {msg.provider && (
+                      <div className="mt-3 pt-1 border-t border-slate-800 text-[9px] text-slate-500 font-mono">
+                        Engine: {msg.provider.toUpperCase()} · Verified with Supabase Database
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {aiLoading && (
+                <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#070e1a] border border-emerald-500/30 text-emerald-400 font-mono text-xs w-fit">
+                  <RefreshCw className="h-4 w-4 animate-spin text-emerald-400" />
+                  <span>Analyzing classroom database with Groq/Gemini...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Input Bar */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendAiQuery(aiQuery);
+              }}
+              className="p-3 border-t border-slate-800 bg-[#070d18] flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                placeholder="Ask any question about student marks, pending tasks, or section CAI/CSD performance..."
+                disabled={aiLoading}
+                className="flex-1 bg-[#0a1426] border border-slate-700/80 rounded-xl px-4 py-3 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 transition-all disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={aiLoading || !aiQuery.trim()}
+                className="flex items-center gap-1.5 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-indigo-500 text-slate-950 font-bold text-xs font-mono transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-[0_0_15px_rgba(0,255,136,0.3)]"
+              >
+                <span>Ask AI</span>
+                <Send className="h-3.5 w-3.5" />
+              </button>
+            </form>
           </div>
         </div>
       )}

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Send, RefreshCw, Terminal, CheckCircle2, XCircle, AlertCircle, FileCode, ShieldAlert, Code2 } from 'lucide-react';
+import { Play, Send, RefreshCw, Terminal, CheckCircle2, XCircle, AlertCircle, FileCode, ShieldAlert, Code2, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { supabase } from '@/lib/supabase';
+import AiTutorDrawer from '@/components/ai-tutor-drawer';
 
 interface CodingProps {
   task: any;
@@ -41,6 +42,7 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const [rollNumber, setRollNumber] = useState('');
   const [resetConfirm, setResetConfirm] = useState(false);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
+  const [triggerAiExplanation, setTriggerAiExplanation] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -536,7 +538,17 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
                   )}
                   {consoleError && (
                     <div className="space-y-1">
-                      <span className="text-[10px] text-rose-400 font-semibold uppercase tracking-wider block">Standard Error:</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-rose-400 font-semibold uppercase tracking-wider block">Standard Error:</span>
+                        <button
+                          type="button"
+                          onClick={() => setTriggerAiExplanation(true)}
+                          className="flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105 shadow-[0_0_10px_rgba(0,255,136,0.2)]"
+                        >
+                          <Sparkles className="h-3 w-3 text-emerald-400" />
+                          Explain with AI Tutor
+                        </button>
+                      </div>
                       <pre className="text-rose-400 font-mono whitespace-pre-wrap leading-relaxed">{consoleError}</pre>
                     </div>
                   )}
@@ -585,7 +597,17 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-900 dark:text-white">Verification Failed</p>
-                          <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">Test cases did not match expectations.</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">Test cases did not match expectations.</p>
+                            <button
+                              type="button"
+                              onClick={() => setTriggerAiExplanation(true)}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 hover:bg-emerald-900/60 transition-all cursor-pointer shadow-[0_0_8px_rgba(0,255,136,0.2)]"
+                            >
+                              <Sparkles className="h-3 w-3 text-emerald-400" />
+                              Ask AI Tutor
+                            </button>
+                          </div>
                         </div>
                       </>
                     )}
@@ -663,6 +685,14 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
         </div>
 
       </div>
+
+      {/* Floating AI Code Tutor Drawer */}
+      <AiTutorDrawer
+        currentCode={code}
+        errorOutput={consoleError || (gradeResult?.status !== 'passed' ? gradeResult?.feedback : '')}
+        triggerExplanation={triggerAiExplanation}
+        onExplanationConsumed={() => setTriggerAiExplanation(false)}
+      />
     </div>
   );
 }
