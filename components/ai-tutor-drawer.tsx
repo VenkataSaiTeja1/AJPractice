@@ -258,10 +258,13 @@ export default function AiTutorDrawer({
                     })}
                   </div>
 
-                  {/* Provider tag */}
-                  {m.provider && (
-                    <div className="mt-2 pt-1 border-t border-slate-700/40 flex items-center justify-between text-[9px] text-slate-400">
-                      <span>Engine: {m.provider.toUpperCase()}</span>
+                  {/* AI status tag */}
+                  {m.sender === 'tutor' && (
+                    <div className="mt-2 pt-1 border-t border-slate-700/40 flex items-center justify-between text-[9px] text-slate-400 font-mono">
+                      <span className="flex items-center gap-1 text-emerald-400">
+                        <Sparkles className="h-2.5 w-2.5" />
+                        {m.provider === 'groq' ? 'Qwen AI Tutor' : m.provider === 'gemini' ? 'Gemini AI Tutor' : 'AI Assistant'}
+                      </span>
                       <span>{m.timestamp}</span>
                     </div>
                   )}
