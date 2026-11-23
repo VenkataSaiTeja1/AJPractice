@@ -310,8 +310,8 @@ async function callGroq(
         body: JSON.stringify({
           model,
           messages: fullMessages,
-          temperature: 0.3,
-          max_tokens: 1024
+          temperature: 0.2,
+          max_tokens: 250
         }),
         signal: controller.signal
       });
@@ -360,8 +360,8 @@ async function callGemini(
   const payload: any = {
     contents,
     generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 1024
+      temperature: 0.2,
+      maxOutputTokens: 250
     }
   };
 

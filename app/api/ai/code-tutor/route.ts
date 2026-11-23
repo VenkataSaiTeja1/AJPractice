@@ -21,15 +21,24 @@ export async function POST(req: Request) {
     const isGeneralQuestion = question && question.trim().length > 0 && !errorOutput && testFailures.length === 0;
 
     // 2. Prepare System Prompt for student pedagogy
-    const systemPrompt = `You are "VVS CodeTutor", an expert, empathetic, and encouraging Computer Science Tutor helping 1st-Year engineering students master C Programming and Data Structures (arrays, pointers, linked lists, stacks, queues).
+    const systemPrompt = `You are "VVS CodeTutor", a direct, helpful, and student-friendly C programming tutor for 1st-year students.
 
-PEDAGOGICAL TEACHING RULES:
-1. GREETINGS & CONVERSATION: If the student simply says hello, hi, or greets you, respond warmly and ask what C programming concept or problem they would like to explore today.
-2. CONCEPTUAL QUESTIONS: If they ask about concepts (e.g., pointers, recursion, memory allocation, arrays), explain clearly with short, intuitive analogies and tiny code examples.
-3. ERROR DIAGNOSIS: If their code produced an error or output mismatch, explain the exact root cause in plain English (e.g. reverse loop incrementing instead of decrementing, or trailing newline from fgets).
-4. DO NOT SPOON-FEED ENTIRE SOLUTIONS: Give guided hints and explain WHY rather than just writing out the complete code.
-5. CONCISE & STRUCTURED: Keep responses focused and readable under 180 words.
-6. TONE: Warm, encouraging, supportive.`;
+CRITICAL INSTRUCTIONS FOR STUDENT-FRIENDLY REPLIES:
+1. NO FLUFF OR ESSAYS: Do NOT write conversational introductions (like "Hello! Let's fix this step-by-step"), multi-step lectures, or long paragraphs. Students are in a coding lab/exam and need to see the exact issue and fix in 5 seconds.
+2. FOR ANY ERROR, TYPO, OR BUG: ALWAYS format your reply using ONLY these two clear sections:
+
+❌ **Problem:**
+State the exact line number, typo, or logic mistake in 1-2 simple sentences.
+
+💡 **How to Fix:**
+Give the exact 1-line correction or code snippet in 1-2 simple sentences.
+
+3. FOR GREETINGS: If the student says "hai", "hello", or "hi", reply in 1 short sentence:
+"Hi! I'm your AI Code Tutor. What C concept or error can I help you with today?"
+
+4. FOR GENERAL CONCEPT QUESTIONS: Keep explanation under 3 bullet points with a 2-line code example.
+
+5. TOTAL LENGTH: Keep the entire response under 50-70 words!`;
 
     // 3. Prepare User Message
     let userPrompt = '';
@@ -51,7 +60,7 @@ PEDAGOGICAL TEACHING RULES:
         userPrompt += `\n`;
       }
     } else {
-      userPrompt += `The student ran their C program and encountered an error. Please explain what went wrong and guide them on how to fix it.\n\n`;
+      userPrompt += `The student ran their C program and encountered an error. Please state the exact problem and how to fix it.\n\n`;
       if (code) userPrompt += `Student's C Code:\n\`\`\`c\n${code}\n\`\`\`\n\n`;
       if (errorOutput) userPrompt += `Compiler / Runtime Error Output:\n\`\`\`\n${errorOutput}\n\`\`\`\n\n`;
       if (testFailures && testFailures.length > 0) {
@@ -64,7 +73,7 @@ PEDAGOGICAL TEACHING RULES:
     }
 
     if (ruleResult.hasMatch && !isGreeting) {
-      userPrompt += `[System Hint: Local heuristic identified: ${ruleResult.errorType}. Explanation: ${ruleResult.explanation}]\n\n`;
+      userPrompt += `[System Diagnostic Hint: Heuristic detected ${ruleResult.errorType}. Explanation: ${ruleResult.explanation}. Suggested fix: ${ruleResult.hint}]\n\n`;
     }
 
     // Build conversation history
@@ -79,16 +88,17 @@ PEDAGOGICAL TEACHING RULES:
     // Fallback text if both AI providers are offline
     let fallbackText = '';
     if (isGreeting) {
-      fallbackText = `Hello! 👋 I'm your **VVS AI CodeTutor**. How are you doing today?\n\nFeel free to ask me anything about C programming, pointers, loops, data structures, or click **"Explain Error"** if your code is running into bugs!`;
+      fallbackText = `Hi! 👋 I'm your **VVS AI CodeTutor**. What C concept or error can I help you with today?`;
     } else if (ruleResult.hasMatch) {
-      fallbackText = `### ⚠️ ${ruleResult.errorType}\n\n**What happened:**\n${ruleResult.explanation}\n\n**Hint:**\n${ruleResult.hint}`;
+      fallbackText = `❌ **Problem:**\n${ruleResult.explanation}\n\n💡 **How to Fix:**\n${ruleResult.hint}`;
     } else if (testFailures && testFailures.length > 0) {
       const tf = testFailures[0];
-      fallbackText = `### ⚠️ Test Case Mismatch\n\nYour program compiled and ran, but the output did not match what the test case expected.\n\n• **Expected:** \`${tf.expected || '(expected)'}\`\n• **Actual Output:** \`${tf.actual || '(actual)'}\`\n\n**Hint:**\nCheck for trailing newline differences (\`\\n\`), extra space characters, or string length mismatches (e.g. from \`fgets\`).`;
+      fallbackText = `❌ **Problem:**\nOutput mismatch. Expected \`${tf.expected || ''}\` but your program produced \`${tf.actual || ''}\`.\n\n💡 **How to Fix:**\nCheck for trailing newlines (\`\\n\`), extra spaces, or string termination (\`\\0\`).`;
     } else if (errorOutput && errorOutput.trim()) {
-      fallbackText = `### ⚠️ Compiler / Runtime Diagnostic\n\n\`\`\`\n${errorOutput.trim()}\n\`\`\`\n\n**Hint:**\nInspect the exact line numbers and memory accesses reported above to resolve the error.`;
+      const firstLine = errorOutput.trim().split('\n')[0];
+      fallbackText = `❌ **Problem:**\n${firstLine}\n\n💡 **How to Fix:**\nInspect the line number indicated above and correct the syntax or variable declaration.`;
     } else {
-      fallbackText = `Hello! How can I help you with your code today? You can ask me any question about C syntax, loops, memory management, or debugging.`;
+      fallbackText = `Hi! What C programming question or error can I help you fix?`;
     }
 
     const aiResult = await executeAiQuery(messages, systemPrompt, fallbackText);
