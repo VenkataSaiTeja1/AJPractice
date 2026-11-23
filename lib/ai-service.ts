@@ -103,19 +103,42 @@ export function analyzeCRuleBased(
   }
 
   // 6. Reverse loop with i++ instead of i-- (Source code pattern)
-  const reverseLoopMatch = cleanCode.match(/for\s*\(\s*(?:int\s+)?([a-zA-Z_]\w*)\s*=\s*[^;]+;\s*\1\s*>=\s*0\s*;\s*\1\s*\+\+\s*\)/);
+  const reverseLoopMatch = cleanCode.match(/for\s*\(\s*(?:(?:int|long|short|size_t)\s+)?([a-zA-Z_]\w*)\s*=\s*[^;]+;\s*\1\s*(?:>=|>|!=)\s*0\s*;\s*\1\s*\+\+\s*\)/);
   if (reverseLoopMatch) {
     const varName = reverseLoopMatch[1];
     return {
       hasMatch: true,
       errorType: 'Infinite Reverse Loop (Off-by-Direction Bug)',
       lineSnippet: reverseLoopMatch[0],
-      explanation: `Your reverse loop decrements towards 0, but you wrote \`${varName}++\` instead of \`${varName}--\`. Because \`${varName}\` keeps increasing, the condition \`${varName} >= 0\` never becomes false, leading to an infinite loop, memory bounds violation, and Segmentation Fault.`,
+      explanation: `Your reverse loop starts at a positive index and intends to loop backwards towards 0, but you wrote \`${varName}++\` instead of \`${varName}--\`. Because \`${varName}\` keeps increasing, the condition \`${varName} >= 0\` never becomes false, leading to an infinite loop, memory bounds violation, and Segmentation Fault.`,
       hint: `Change \`${varName}++\` to \`${varName}--\` in your for loop statement.`
     };
   }
 
-  // 7. scanf without & operator for primitive variables
+  // 7. fgets newline inclusion causing length +1 or output mismatches
+  const hasFgets = /\bfgets\s*\(/.test(cleanCode);
+  if (hasFgets) {
+    const hasLenMismatch = testFailures.some(tf => {
+      const exp = tf.expected || '';
+      const act = tf.actual || '';
+      const expNum = exp.match(/\b(\d+)\b/);
+      const actNum = act.match(/\b(\d+)\b/);
+      if (expNum && actNum && parseInt(actNum[1], 10) === parseInt(expNum[1], 10) + 1) return true;
+      return /length/i.test(exp) || /length/i.test(act);
+    });
+
+    if (hasLenMismatch || /The length of string/i.test(cleanError) || (/length/i.test(cleanCode) && testFailures.length > 0)) {
+      return {
+        hasMatch: true,
+        errorType: 'Trailing Newline Character from fgets()',
+        lineSnippet: 'fgets(s, sizeof(s), stdin);',
+        explanation: '`fgets()` reads until Enter is pressed and includes the newline character `\\n` inside your string buffer right before `\\0`. This increases `strlen(s)` by 1 (e.g. 6 instead of 5) and introduces unwanted line breaks during concatenation.',
+        hint: 'Strip the newline character immediately after `fgets`: `s[strcspn(s, "\\n")] = \'\\0\';` (requires `#include <string.h>`).'
+      };
+    }
+  }
+
+  // 8. scanf without & operator for primitive variables
   const scanfPrimitiveMatch = cleanCode.match(/scanf\s*\(\s*"[^"]*%[d|i|f|c|u|x|ld|lf][^"]*"\s*,\s*([a-zA-Z_]\w*)\s*\)/);
   if (scanfPrimitiveMatch) {
     const varName = scanfPrimitiveMatch[1];
@@ -131,7 +154,7 @@ export function analyzeCRuleBased(
     }
   }
 
-  // 8. Accidental semicolon after if, for, or while
+  // 9. Accidental semicolon after if, for, or while
   const prematureSemicolonMatch = cleanCode.match(/(?:for|while|if)\s*\([^)]*\)\s*;/);
   if (prematureSemicolonMatch && !cleanCode.includes('do {')) {
     return {
@@ -143,7 +166,7 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 9. Insecure gets() usage
+  // 10. Insecure gets() usage
   if (/\bgets\s*\(/.test(cleanCode)) {
     return {
       hasMatch: true,
@@ -154,8 +177,20 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 10. Segmentation Fault / SIGSEGV
+  // 11. Segmentation Fault / SIGSEGV
   if (/Segmentation Fault|SIGSEGV|core dumped|exit code 139/i.test(cleanError)) {
+    // If code has reverse loop bug, explain that specifically
+    if (reverseLoopMatch) {
+      const varName = reverseLoopMatch[1];
+      return {
+        hasMatch: true,
+        errorType: 'Segmentation Fault from Infinite Reverse Loop',
+        lineSnippet: reverseLoopMatch[0],
+        explanation: `Your reverse loop has \`${varName}++\` instead of \`${varName}--\`. The index keeps growing infinitely past array boundaries, accessing unallocated memory addresses until the operating system terminates your process with SIGSEGV.`,
+        hint: `Change \`${varName}++\` to \`${varName}--\` in your for loop.`
+      };
+    }
+
     return {
       hasMatch: true,
       errorType: 'Segmentation Fault (Memory Access Violation)',
@@ -164,7 +199,7 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 11. Floating Point Exception / SIGFPE
+  // 12. Floating Point Exception / SIGFPE
   if (/Floating Point Exception|SIGFPE|division by zero/i.test(cleanError)) {
     return {
       hasMatch: true,
@@ -174,7 +209,7 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 12. Generic GCC error line matcher
+  // 13. Generic GCC error line matcher
   const genericGccError = cleanError.match(/main\.c:(\d+):(?:\d+:)?\s*error:\s*([^\n]+)/i);
   if (genericGccError) {
     const line = genericGccError[1];
@@ -188,11 +223,21 @@ export function analyzeCRuleBased(
     };
   }
 
-  // 13. Output Mismatch Analysis (Test Case Failures)
+  // 14. Output Mismatch Analysis (Test Case Failures)
   if (testFailures.length > 0) {
     const firstFail = testFailures[0];
     const expected = (firstFail.expected || '').trim();
     const actual = (firstFail.actual || '').trim();
+
+    // Check for trailing newline difference
+    if (actual.replace(/[\r\n]+$/, '') === expected.replace(/[\r\n]+$/, '') && actual !== expected) {
+      return {
+        hasMatch: true,
+        errorType: 'Trailing Newline Mismatch',
+        explanation: 'Your output text is correct, but contains extra trailing line breaks or newline characters at the end.',
+        hint: 'Check your `printf` statements to make sure you do not print an extra `\\n` at the end.'
+      };
+    }
 
     if (expected.toLowerCase() === actual.toLowerCase() && expected !== actual) {
       return {
@@ -222,8 +267,14 @@ export function analyzeCRuleBased(
 }
 
 /**
- * Call Groq Cloud API (Llama 3.3 70B / Llama 3.1 8B)
+ * Call Groq Cloud API with multi-model fallback (Qwen 3.8 27B / GPT-OSS 120B / 20B)
  */
+const GROQ_CANDIDATE_MODELS = [
+  'qwen/qwen3.8-27b',
+  'openai/gpt-oss-120b',
+  'openai/gpt-oss-20b'
+];
+
 async function callGroq(
   messages: { role: string; content: string }[],
   systemPrompt?: string
@@ -235,38 +286,57 @@ async function callGroq(
     ? [{ role: 'system', content: systemPrompt }, ...messages]
     : messages;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  let lastError: any = null;
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: fullMessages,
-      temperature: 0.3,
-      max_tokens: 1024
-    }),
-    signal: controller.signal
-  });
+  for (const model of GROQ_CANDIDATE_MODELS) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
 
-  clearTimeout(timeout);
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: fullMessages,
+          temperature: 0.3,
+          max_tokens: 1024
+        }),
+        signal: controller.signal
+      });
 
-  if (!res.ok) {
-    const errBody = await res.text();
-    throw new Error(`Groq API returned ${res.status}: ${errBody}`);
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content && content.trim()) {
+          return content.trim();
+        }
+      } else {
+        const errBody = await res.text();
+        lastError = new Error(`Groq [${model}] returned ${res.status}: ${errBody}`);
+      }
+    } catch (e: any) {
+      lastError = e;
+    }
   }
 
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
+  throw lastError || new Error('All Groq candidate models failed');
 }
 
 /**
- * Call Google Gemini API (Gemini 1.5 Flash / 2.0 Flash)
+ * Call Google Gemini API with multi-model fallback (Gemini 2.5 Flash / Flash Latest)
  */
+const GEMINI_CANDIDATE_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-flash-latest',
+  'gemini-2.5-flash-lite'
+];
+
 async function callGemini(
   messages: { role: string; content: string }[],
   systemPrompt?: string
@@ -293,28 +363,37 @@ async function callGemini(
     };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  let lastError: any = null;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal: controller.signal
-  });
+  for (const model of GEMINI_CANDIDATE_MODELS) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
 
-  clearTimeout(timeout);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
 
-  if (!res.ok) {
-    const errBody = await res.text();
-    throw new Error(`Gemini API returned ${res.status}: ${errBody}`);
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim()) return text.trim();
+      } else {
+        const errBody = await res.text();
+        lastError = new Error(`Gemini [${model}] returned ${res.status}: ${errBody}`);
+      }
+    } catch (e: any) {
+      lastError = e;
+    }
   }
 
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Empty response from Gemini API');
-  return text;
+  throw lastError || new Error('All Gemini candidate models failed');
 }
 
 /**

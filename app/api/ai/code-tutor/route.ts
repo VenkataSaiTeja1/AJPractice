@@ -66,8 +66,11 @@ PEDAGOGICAL TEACHING RULES:
     let fallbackText = '';
     if (ruleResult.hasMatch) {
       fallbackText = `### ⚠️ ${ruleResult.errorType}\n\n**What happened:**\n${ruleResult.explanation}\n\n**Hint:**\n${ruleResult.hint}`;
+    } else if (testFailures && testFailures.length > 0) {
+      const tf = testFailures[0];
+      fallbackText = `### ⚠️ Test Case Mismatch\n\nYour program compiled and ran, but the output did not match what the test case expected.\n\n• **Expected:** \`${tf.expected || '(expected)'}\`\n• **Actual Output:** \`${tf.actual || '(actual)'}\`\n\n**Hint:**\nCheck for trailing newline differences (\`\\n\`), extra space characters, or string length mismatches (e.g. from \`fgets\`).`;
     } else if (errorOutput && errorOutput.trim()) {
-      fallbackText = `### ⚠️ Compiler Diagnostic\n\n**Compiler Output:**\n\`\`\`\n${errorOutput.trim()}\n\`\`\`\n\n**Hint:**\nInspect the exact line and column numbers reported by the compiler to resolve the syntax or declaration error.`;
+      fallbackText = `### ⚠️ Compiler / Runtime Diagnostic\n\n\`\`\`\n${errorOutput.trim()}\n\`\`\`\n\n**Hint:**\nInspect the exact line numbers and memory accesses reported above to resolve the error.`;
     } else {
       fallbackText = `### 💡 Error Diagnostics\n\nYour program encountered an execution issue. Please check:\n• Array indices to ensure you are not accessing beyond allocated size\n• Loop conditions (check for infinite loops or reverse loops with \`i++\` instead of \`i--\`)\n• Make sure all pointers point to allocated memory before dereferencing.`;
     }

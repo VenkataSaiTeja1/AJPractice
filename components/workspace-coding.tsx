@@ -689,8 +689,17 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
       {/* Floating AI Code Tutor Drawer */}
       <AiTutorDrawer
         currentCode={code}
-        errorOutput={consoleError || (gradeResult?.status !== 'passed' ? gradeResult?.feedback : '')}
-        testFailures={gradeResult?.status !== 'passed' && gradeResult?.feedback ? [{ expected: '', actual: gradeResult.feedback }] : []}
+        errorOutput={consoleError}
+        testFailures={(() => {
+          if (gradeResult?.status !== 'passed' && gradeResult?.feedback) {
+            const m = gradeResult.feedback.match(/^([^\n]*Output Mismatch\.?)\n\nInput parameters:\n"([\s\S]*?)"\n\nExpected:\n"([\s\S]*?)"\n\nActual:\n"([\s\S]*)"$/);
+            if (m) {
+              return [{ input: m[2], expected: m[3], actual: m[4] }];
+            }
+            return [{ expected: '', actual: gradeResult.feedback }];
+          }
+          return [];
+        })()}
         triggerExplanation={triggerAiExplanation}
         onExplanationConsumed={() => setTriggerAiExplanation(false)}
       />
