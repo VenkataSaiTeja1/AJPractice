@@ -49,7 +49,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl backdrop-saturate-150 transition-colors duration-200">
+    <nav className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-[#2a2a2a] bg-white/85 dark:bg-[#0a0a0a]/90 backdrop-blur-xl backdrop-saturate-150 transition-colors duration-200">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-2">
           
@@ -58,11 +58,11 @@ export default function Navbar() {
             href="/dashboard"
             className="group flex items-center gap-2.5 transition-opacity hover:opacity-85 shrink-0"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-md shadow-indigo-500/20">
-              <GraduationCap className="h-5 w-5 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 dark:bg-white shadow-md">
+              <GraduationCap className="h-5 w-5 text-white dark:text-slate-900" />
             </div>
             <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-              Portal <span className="hidden font-medium text-indigo-500 sm:inline">By VVS</span>
+              Practice Portal <span className="hidden font-medium text-slate-500 dark:text-slate-400 sm:inline">by VVS</span>
             </span>
           </Link>
 
@@ -75,8 +75,8 @@ export default function Navbar() {
                   href="/dashboard"
                   className={`flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 ${
                     pathname === '/dashboard'
-                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs ring-1 ring-indigo-200 dark:ring-indigo-800'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-slate-100 dark:bg-[#1a1a1a] text-slate-900 dark:text-white shadow-xs ring-1 ring-slate-300 dark:ring-[#333333]'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#1a1a1a] hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -105,7 +105,7 @@ export default function Navbar() {
                 {/* Profile Badge & Logout */}
                 <div className="flex items-center gap-2 sm:gap-3">
                   {/* Avatar */}
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs font-bold uppercase text-white shadow-xs shrink-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 dark:bg-white text-xs font-bold uppercase text-white dark:text-slate-900 shadow-xs shrink-0">
                     {profile.full_name ? profile.full_name.charAt(0) : '?'}
                   </div>
 
@@ -139,7 +139,7 @@ export default function Navbar() {
             {!profile && (
               <Link
                 href="/login"
-                className="flex items-center gap-1.5 rounded-full bg-indigo-600 hover:bg-indigo-700 px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all duration-200"
+                className="flex items-center gap-1.5 rounded-full bg-slate-900 dark:bg-white hover:bg-slate-700 dark:hover:bg-slate-200 px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold text-white dark:text-slate-900 shadow-md transition-all duration-200"
               >
                 <User className="h-4 w-4" />
                 Sign In

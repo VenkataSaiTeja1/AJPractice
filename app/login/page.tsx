@@ -450,7 +450,7 @@ export default function LoginPage() {
 
                 <h1 className="text-2xl font-black tracking-tight text-white font-mono flex items-center justify-center gap-1.5">
                   <span className="text-emerald-400">&gt;_</span>
-                  <span>AJ Practice Portal</span>
+                  <span>Practice Portal by VVS</span>
                   <span
                     className="inline-block w-[3px] h-5 bg-emerald-400 ml-0.5 align-middle"
                     style={{ opacity: cursorOn ? 1 : 0, transition: 'opacity 0.1s' }}
