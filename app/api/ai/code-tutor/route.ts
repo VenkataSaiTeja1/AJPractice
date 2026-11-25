@@ -15,52 +15,47 @@ export async function POST(req: Request) {
     // 1. Run instant rule-based diagnosis first
     const ruleResult = analyzeCRuleBased(code, errorOutput, testFailures);
 
-    // Check if the student message is a conversational greeting or chat question
+    // Determine student's intent
     const trimmedQ = (question || '').trim().toLowerCase();
     const isGreeting = /^(hai|hi|hello|hey|hola|good\s*(morning|afternoon|evening))\b/i.test(trimmedQ);
-    const isGeneralQuestion = question && question.trim().length > 0 && !errorOutput && testFailures.length === 0;
+    const isTimeComplexity = /time\s*complexity|space\s*complexity|big\s*o/i.test(trimmedQ);
+    const isExplicitErrorRequest = !question || 
+      /explain\s*(what\s*is\s*wrong|why\s*(my\s*)?code\s*fail|the\s*error|how\s*to\s*fix)|fix\s*(my\s*)?code|bug|error\s*diagnostic/i.test(trimmedQ);
+    const isConceptOrGeneralQuestion = !isExplicitErrorRequest && !isGreeting && !isTimeComplexity;
 
     // 2. Prepare System Prompt for student pedagogy
-    const systemPrompt = `You are "VVS CodeTutor", a direct, helpful, and student-friendly C programming tutor for 1st-year students.
+    const systemPrompt = `You are "VVS CodeTutor", an expert, direct, and encouraging Computer Science tutor for 1st-year C students.
 
-CRITICAL INSTRUCTIONS FOR STUDENT-FRIENDLY REPLIES:
-1. NO FLUFF OR ESSAYS: Do NOT write conversational introductions (like "Hello! Let's fix this step-by-step"), multi-step lectures, or long paragraphs. Students are in a coding lab/exam and need to see the exact issue and fix in 5 seconds.
-2. FOR ANY ERROR, TYPO, OR BUG: ALWAYS format your reply using ONLY these two clear sections:
+RESPONSE RULES:
+1. ANSWER THE EXACT QUESTION: Always address the student's actual question directly:
+   - If they ask "Explain about pointers": explain pointers clearly with a tiny 2-line code example.
+   - If they ask "What is the time complexity...": analyze the loops in their code and state Time Complexity and Space Complexity.
+   - If they say "hi" or "hello": greet them warmly in 1 short sentence.
+   - ONLY if they explicitly ask to fix or explain a code error/bug: use the 2-section format:
+     ❌ **Problem:** (1-2 sentences on the exact line and mistake)
+     💡 **How to Fix:** (1-2 sentences on the exact fix)
 
-❌ **Problem:**
-State the exact line number, typo, or logic mistake in 1-2 simple sentences.
-
-💡 **How to Fix:**
-Give the exact 1-line correction or code snippet in 1-2 simple sentences.
-
-3. FOR GREETINGS: If the student says "hai", "hello", or "hi", reply in 1 short sentence:
-"Hi! I'm your AI Code Tutor. What C concept or error can I help you with today?"
-
-4. FOR GENERAL CONCEPT QUESTIONS: Keep explanation under 3 bullet points with a 2-line code example.
-
-5. TOTAL LENGTH: Keep the entire response under 50-70 words!`;
+2. BE CONCISE: Keep all responses under 60-80 words so students can read them instantly while coding.`;
 
     // 3. Prepare User Message
     let userPrompt = '';
     if (isGreeting) {
-      userPrompt = `Student says: "${question}". Please greet them warmly and ask how you can help them with C programming or their coding practice.`;
-    } else if (question && question.trim()) {
-      userPrompt += `Student Question: "${question}"\n\n`;
-      if (code && !isGeneralQuestion) {
+      userPrompt = `Student says: "${question}". Please greet them warmly in 1 short sentence and ask what C concept or coding question they want help with today.`;
+    } else if (isTimeComplexity) {
+      userPrompt = `Student Question: "${question}"\n\n`;
+      if (code) {
+        userPrompt += `Student's C Code:\n\`\`\`c\n${code}\n\`\`\`\n\n`;
+      }
+      userPrompt += `Please analyze the student's code and state its Time Complexity and Space Complexity with a brief 1-sentence reason. Do NOT diagnose compiler errors.`;
+    } else if (isConceptOrGeneralQuestion) {
+      userPrompt = `Student Question: "${question}"\n\n`;
+      if (code) {
         userPrompt += `Student's Current C Code:\n\`\`\`c\n${code}\n\`\`\`\n\n`;
       }
-      if (errorOutput) {
-        userPrompt += `Compiler / Runtime Error:\n\`\`\`\n${errorOutput}\n\`\`\`\n\n`;
-      }
-      if (testFailures && testFailures.length > 0) {
-        userPrompt += `Failed Test Case Details:\n`;
-        testFailures.forEach((tf: any, idx: number) => {
-          userPrompt += `- Test Case #${idx + 1}: Input: "${tf.input || '(none)'}", Expected: "${tf.expected}", Actual Got: "${tf.actual}"\n`;
-        });
-        userPrompt += `\n`;
-      }
+      userPrompt += `Please answer the student's question directly, clearly, and concisely (under 75 words) with a tiny code snippet if helpful. Do NOT diagnose compiler errors.`;
     } else {
-      userPrompt += `The student ran their C program and encountered an error. Please state the exact problem and how to fix it.\n\n`;
+      // Explicit error diagnosis request
+      userPrompt = `The student ran their C program and encountered an error. Please state the exact problem and how to fix it.\n\n`;
       if (code) userPrompt += `Student's C Code:\n\`\`\`c\n${code}\n\`\`\`\n\n`;
       if (errorOutput) userPrompt += `Compiler / Runtime Error Output:\n\`\`\`\n${errorOutput}\n\`\`\`\n\n`;
       if (testFailures && testFailures.length > 0) {
@@ -70,10 +65,9 @@ Give the exact 1-line correction or code snippet in 1-2 simple sentences.
         });
         userPrompt += `\n`;
       }
-    }
-
-    if (ruleResult.hasMatch && !isGreeting) {
-      userPrompt += `[System Diagnostic Hint: Heuristic detected ${ruleResult.errorType}. Explanation: ${ruleResult.explanation}. Suggested fix: ${ruleResult.hint}]\n\n`;
+      if (ruleResult.hasMatch) {
+        userPrompt += `[System Diagnostic Hint: Heuristic detected ${ruleResult.errorType}. Explanation: ${ruleResult.explanation}. Suggested fix: ${ruleResult.hint}]\n\n`;
+      }
     }
 
     // Build conversation history
@@ -89,6 +83,14 @@ Give the exact 1-line correction or code snippet in 1-2 simple sentences.
     let fallbackText = '';
     if (isGreeting) {
       fallbackText = `Hi! 👋 I'm your **VVS AI CodeTutor**. What C concept or error can I help you with today?`;
+    } else if (isTimeComplexity) {
+      fallbackText = `⏱️ **Time Complexity:** O(N) — iterates through the loop N times.\n💾 **Space Complexity:** O(1) — operates in-place with fixed memory.`;
+    } else if (isConceptOrGeneralQuestion) {
+      if (/pointer/i.test(question)) {
+        fallbackText = `A **pointer** is a variable that stores the memory address of another variable. You declare it using \`*\` and get an address using \`&\`:\n\`\`\`c\nint x = 10;\nint *ptr = &x; // ptr holds memory address of x\nprintf("%d", *ptr); // prints 10\n\`\`\``;
+      } else {
+        fallbackText = `Here is the explanation for your question:\nIn C programming, ensure your variable declarations, data types, and loop conditions match your intended logic.`;
+      }
     } else if (ruleResult.hasMatch) {
       fallbackText = `❌ **Problem:**\n${ruleResult.explanation}\n\n💡 **How to Fix:**\n${ruleResult.hint}`;
     } else if (testFailures && testFailures.length > 0) {
@@ -106,7 +108,7 @@ Give the exact 1-line correction or code snippet in 1-2 simple sentences.
     return NextResponse.json({
       reply: aiResult.text,
       provider: aiResult.provider,
-      ruleAnalysis: ruleResult
+      ruleAnalysis: isExplicitErrorRequest ? ruleResult : { hasMatch: false }
     });
 
   } catch (err: any) {
