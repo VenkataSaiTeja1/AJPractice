@@ -65,6 +65,46 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `code-draft:${studentId}:${task.id}`;
+
+  // ── Anti-paste: block ALL paste routes including mobile clipboard ──────────
+  // React's onPaste blocks Ctrl+V on desktop. For mobile (long-press → Paste /
+  // virtual keyboard clipboard button) we also need native DOM listeners with
+  // { capture: true } so they fire before React's synthetic layer, and we block
+  // the `input` event when inputType is insertFromPaste (Android Chrome/WebKit).
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+
+    const blockPaste = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      alert('Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.');
+    };
+
+    const blockInputPaste = (e: Event) => {
+      const ie = e as InputEvent;
+      if (
+        ie.inputType === 'insertFromPaste' ||
+        ie.inputType === 'insertFromPasteAsQuotation' ||
+        ie.inputType === 'insertFromDrop'
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        alert('Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.');
+      }
+    };
+
+    // Capture phase so we intercept before React and before the browser commits the value
+    el.addEventListener('paste', blockPaste, { capture: true });
+    el.addEventListener('beforeinput', blockInputPaste, { capture: true });
+
+    return () => {
+      el.removeEventListener('paste', blockPaste, true);
+      el.removeEventListener('beforeinput', blockInputPaste, true);
+    };
+  }, []);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
@@ -423,7 +463,12 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
               onScroll={handleScroll}
               onPaste={(e) => {
                 e.preventDefault();
+                e.nativeEvent.stopImmediatePropagation();
                 alert("Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.");
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                alert("Malpractice Protection: Dropping code is disabled. You must type your solution manually.");
               }}
               onCopy={(e) => {
                 e.preventDefault();
