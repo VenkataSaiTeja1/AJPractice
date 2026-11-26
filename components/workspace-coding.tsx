@@ -66,43 +66,61 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `code-draft:${studentId}:${task.id}`;
 
-  // ── Anti-paste: block ALL paste routes including mobile clipboard ──────────
-  // React's onPaste blocks Ctrl+V on desktop. For mobile (long-press → Paste /
-  // virtual keyboard clipboard button) we also need native DOM listeners with
-  // { capture: true } so they fire before React's synthetic layer, and we block
-  // the `input` event when inputType is insertFromPaste (Android Chrome/WebKit).
+  // ── Anti-paste: multi-layer defence including Google Keyboard clipboard ──────
+  // Layer 1: native 'paste' event (Ctrl+V, long-press→Paste, Samsung keyboard)
+  // Layer 2: 'beforeinput' — catches insertFromPaste / insertFromDrop AND
+  //          insertText with large data (Gboard clipboard bar on older Android)
+  // Layer 3: onChange diff guard (ultimate fallback — no matter how the text
+  //          arrived, if >25 chars appear in one event it is treated as a paste)
+  const PASTE_THRESHOLD = 25; // chars added in one input event = paste
+  const prevCodeRef = useRef(code);
+
+  // Keep prevCodeRef in sync whenever code changes from any external source
+  useEffect(() => {
+    prevCodeRef.current = code;
+  }, [code]);
+
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
 
+    const alertPaste = () =>
+      alert('Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.');
+
+    // Layer 1 — native paste event (desktop Ctrl+V, mobile long-press→Paste)
     const blockPaste = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      alert('Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.');
+      alertPaste();
     };
 
-    const blockInputPaste = (e: Event) => {
+    // Layer 2 — beforeinput (fires before DOM changes, preventable)
+    // Gboard clipboard bar often sends insertText with long .data instead of
+    // insertFromPaste, so we also block insertText whose data is suspiciously long.
+    const blockBeforeInput = (e: Event) => {
       const ie = e as InputEvent;
-      if (
+      const isPasteType =
         ie.inputType === 'insertFromPaste' ||
         ie.inputType === 'insertFromPasteAsQuotation' ||
-        ie.inputType === 'insertFromDrop'
-      ) {
+        ie.inputType === 'insertFromDrop';
+      const isLongInsert =
+        ie.inputType === 'insertText' && ie.data != null && ie.data.length > PASTE_THRESHOLD;
+      if (isPasteType || isLongInsert) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        alert('Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.');
+        alertPaste();
       }
     };
 
-    // Capture phase so we intercept before React and before the browser commits the value
+    // Capture phase: fires before React's synthetic event system
     el.addEventListener('paste', blockPaste, { capture: true });
-    el.addEventListener('beforeinput', blockInputPaste, { capture: true });
+    el.addEventListener('beforeinput', blockBeforeInput, { capture: true });
 
     return () => {
       el.removeEventListener('paste', blockPaste, true);
-      el.removeEventListener('beforeinput', blockInputPaste, true);
+      el.removeEventListener('beforeinput', blockBeforeInput, true);
     };
   }, []);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -459,7 +477,23 @@ export default function WorkspaceCoding({ task, studentId, onSubmitted }: Coding
             <textarea
               ref={textareaRef}
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                // Layer 3 — onChange diff guard: catches any paste that slipped
+                // through event handlers (e.g. Gboard clipboard on older Android
+                // that fires as plain 'input' with no detectable inputType).
+                // If more than PASTE_THRESHOLD chars were added in one event,
+                // it cannot be normal typing — restore the previous value.
+                const charsAdded = newValue.length - prevCodeRef.current.length;
+                if (charsAdded > PASTE_THRESHOLD) {
+                  e.target.value = prevCodeRef.current; // reset DOM value immediately
+                  setCode(prevCodeRef.current);
+                  alert('Malpractice Protection: Pasting code is strictly disabled. You must type your solution manually.');
+                  return;
+                }
+                prevCodeRef.current = newValue;
+                setCode(newValue);
+              }}
               onScroll={handleScroll}
               onPaste={(e) => {
                 e.preventDefault();
